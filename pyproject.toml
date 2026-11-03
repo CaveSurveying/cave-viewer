@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cave-viewer"
+dynamic = ["version"]
+description = "A cave survey in 3D beneath the LiDAR ground, in the browser: one viewer, configured per cave repo"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy", "Pillow"]
+
+[project.scripts]
+caveviewer = "caveviewer.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "caveviewer.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["caveviewer*"]
+
+[tool.setuptools.package-data]
+caveviewer = ["schema.json", "viewer/*.html", "viewer/static/*", "viewer/vendor/**/*"]

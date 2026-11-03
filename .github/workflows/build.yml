@@ -1,0 +1,92 @@
+# Build a cave repo's site with cave-viewer and publish it to GitHub Pages.
+# A reusable workflow: a cave repo calls it from its own workflow, e.g.
+#
+#   # .github/workflows/pages.yml in the cave repo
+#   on: { push: { branches: [main] }, workflow_dispatch: {} }
+#   permissions: { contents: read, pages: write, id-token: write }
+#   jobs:
+#     site:
+#       uses: CaveSurveying/cave-viewer/.github/workflows/build.yml@v0.1.0
+#       with:
+#         config: caves.json
+#
+# It installs the cave repo's requirements.txt (which pins cave-viewer to a
+# tag), any apt packages it asks for (therion, survex and subversion for a
+# Therion survey), runs `python -m caveviewer build`, and (deploy: true)
+# publishes the site. The repo's Pages source must be "GitHub Actions".
+# Only data the repo may publish should be in it: a build without a private
+# drawing (drawn.image) simply leaves the drawn survey out.
+name: cave-viewer build
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: The cave repo's config, from its root
+        type: string
+        default: caves.json
+      out:
+        description: Where the site is built
+        type: string
+        default: site
+      python-version:
+        type: string
+        default: '3.12'
+      apt-packages:
+        description: Ubuntu packages to install first (e.g. "therion survex subversion" for a Therion survey)
+        type: string
+        default: ''
+      build-args:
+        description: More arguments for the build (e.g. "--steps model,drawn" or cave ids)
+        type: string
+        default: ''
+      preview:
+        description: Take each cave's preview.png with Chrome
+        type: boolean
+        default: true
+      deploy:
+        description: Publish the site to GitHub Pages (false just builds it, as for a pull request)
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+      - name: Install apt packages
+        if: inputs.apt-packages != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ inputs.apt-packages }}
+      - name: Install cave-viewer (as requirements.txt pins it)
+        run: pip install -r requirements.txt
+      - name: Keep the LiDAR between runs
+        uses: actions/cache@v4
+        with:
+          path: lidar
+          key: lidar-${{ hashFiles(inputs.config) }}
+          restore-keys: lidar-
+      - name: Build the site
+        env:
+          CHROMIUM: ${{ inputs.preview && '/usr/bin/google-chrome' || '' }}
+        run: python -m caveviewer build "${{ inputs.config }}" --out "${{ inputs.out }}" ${{ inputs.build-args }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.out }}
+
+  deploy:
+    if: inputs.deploy
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

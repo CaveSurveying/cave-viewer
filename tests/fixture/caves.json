@@ -1,0 +1,26 @@
+{
+  "_comment": "cave-viewer's test fixture: one made-up cave from a Survex .3d (data/tiny.svx, built with cavern), on level ground, twice: once with everything on, and once with routes, AR and offline turned off. Nothing here is fetched.",
+  "site": {
+    "title": "Test caves in 3D",
+    "description": "cave-viewer's test fixture.",
+    "lede": "A made-up cave, for the tests.",
+    "footer": "{credits}."
+  },
+  "defaults": {
+    "area": "Nowhere",
+    "credit": "made up for the tests",
+    "grid": {"offset": [300000, 100000]},
+    "survey": {"type": "survex", "file": "data/tiny.3d"},
+    "data": {"url": "data/tiny.svx", "label": "the test survey"},
+    "terrain": {"type": "flat", "cache": null},
+    "entrances": {"tiny.ent": "Tiny Entrance"},
+    "places": {"The Fork": "tiny.2", "The Loop": "tiny.4", "The Pitch": "tiny.7", "The End": "tiny.9"},
+    "ways": [["Tiny Entrance", "The Fork", "The Pitch", "The End"]],
+    "trips": [{"name": "Round the loop", "via": ["Tiny Entrance", "The Loop", "Tiny Entrance"]}]
+  },
+  "caves": [
+    {"id": "tiny", "name": "Tiny Cave"},
+    {"id": "tiny-plain", "name": "Tiny Cave, plain", "short_name": "Tiny plain", "path": "plain",
+     "features": {"routes": false, "ar": false, "offline": false}}
+  ]
+}

@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.egg-info/
+/build/
+/dist/
+# the test fixture's build
+/tests/fixture/build/
+/tests/fixture/site/

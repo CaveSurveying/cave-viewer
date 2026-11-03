@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "caveviewer/schema.json",
+  "title": "cave-viewer config",
+  "description": "A cave repo's config for cave-viewer: its caves, and for each where its survey, names, ground, drawn survey and walls come from. Paths are relative to the config file's folder. Each cave is deep-merged over \"defaults\" (objects merge; lists and other values replace). Keys starting with _ are comments.",
+  "type": "object",
+  "required": ["caves"],
+  "properties": {
+    "work": {"type": "string", "default": "build", "description": "Where intermediate files go: <work>/<cave id>/ (cave.3d, names.json, plan.svg, esri/, credits.json). Keep it out of git if the data's licence says so."},
+    "site": {
+      "type": "object",
+      "description": "The landing page, for a repo of several caves.",
+      "properties": {
+        "index": {"type": "boolean", "description": "Write <out>/index.html listing the caves. Default: on for several caves, off for one."},
+        "title": {"type": "string", "default": "Caves in 3D"},
+        "description": {"type": "string", "description": "The page's meta description."},
+        "lede": {"type": "string", "description": "HTML under the title."},
+        "footer": {"type": "string", "default": "{credits}", "description": "HTML. {credits} becomes each cave's name and credit, in turn."}
+      }
+    },
+    "defaults": {"$ref": "#/$defs/cave", "description": "What every cave shares; each cave is merged over it. id and name aren't required here."},
+    "caves": {"type": "array", "minItems": 1, "items": {"allOf": [{"$ref": "#/$defs/cave"}, {"required": ["id", "name"]}]}}
+  },
+  "$defs": {
+    "station": {"type": "string", "description": "A survey station's full name, as in the .3d file (e.g. GB.Crickmay.gb.z.7)."},
+    "place": {"type": "string", "description": "A place's name: an entrance, a label on the drawn survey, or one of the cave's places."},
+    "cave": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "The cave's id: its work folder, its caches' names, its USDZ's name."},
+        "name": {"type": "string", "description": "As on its page: GB Cave."},
+        "short_name": {"type": "string", "description": "For the home screen. Default: the name without ' Cave' or ' Swallet'."},
+        "path": {"type": "string", "description": "Where its page goes in the site: <out>/<path>/. Default: its id."},
+        "area": {"type": "string", "description": "Where it is, under its name: Blackdown, Charterhouse."},
+        "credit": {"type": "string", "description": "The survey's credit, HTML: on its page, the printed route card, the drawn survey's meta.json and the landing page."},
+        "data": {
+          "type": "object",
+          "description": "The page's link to the data. Default: the Therion survey's Subversion folder.",
+          "properties": {
+            "url": {"type": "string"},
+            "label": {"type": "string", "default": "the survey data", "description": "The link's text."},
+            "html": {"type": "string", "description": "The whole of that part of the credits, instead (e.g. a download link)."}
+          }
+        },
+        "grid": {
+          "type": "object",
+          "properties": {
+            "offset": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "default": [0, 0], "description": "Added to the survey's x, y for full National Grid coordinates: [300000, 100000] for a survey on the ST square, [0, 0] for one already on the full grid."}
+          }
+        },
+        "survey": {
+          "description": "Where the centreline comes from.",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["type", "file"],
+              "properties": {
+                "type": {"const": "survex"},
+                "file": {"type": "string", "description": "A Survex .3d file (v3 to v8)."}
+              }
+            },
+            {
+              "type": "object",
+              "required": ["type", "checkout", "dir", "source"],
+              "properties": {
+                "type": {"const": "therion"},
+                "svn": {"type": "string", "description": "A Subversion URL to check out into checkout (and update on each build, unless --no-fetch). Leave out for a Therion project already in the repo."},
+                "checkout": {"type": "string", "description": "The folder holding the Therion project(s)."},
+                "dir": {"type": "string", "description": "The cave's folder in it."},
+                "source": {"type": "string", "description": "Its main .th file, in dir."},
+                "svx": {"type": "array", "items": {"type": "string"}, "description": "Survex files Therion imports, built first with cavern."},
+                "select": {"type": "array", "items": {"type": "string"}, "description": "Therion selects for the plan."},
+                "from": {"type": "string", "description": "Where the drawing says it's from (with /<dir> after it): Cave Registry Data Archive, CheddarCatchment."}
+              }
+            }
+          ]
+        },
+        "names": {
+          "type": "object",
+          "properties": {
+            "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."}
+          }
+        },
+        "entrances": {"type": "object", "additionalProperties": {"$ref": "#/$defs/place"}, "description": "Entrance station -> name, in order (the first is the page's grid reference). Default: the stations the survey flags as entrances."},
+        "places": {"type": "object", "additionalProperties": {"$ref": "#/$defs/station"}, "description": "Place name -> its station: names the drawing doesn't give, or a better station for one it does."},
+        "surveys": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Top-level survey name -> passage name, for every station in it."},
+        "codes": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Regular expression on station names -> passage name (a passage's own survey series)."},
+        "ways": {"type": "array", "items": {"type": "array", "items": {"$ref": "#/$defs/place"}}, "description": "The usual ways, each a chain of places, which routes keep to."},
+        "offway": {"type": "number", "default": 1.6, "description": "How many times as far a passage off the usual ways counts."},
+        "trips": {"type": "array", "items": {"type": "object", "required": ["name", "via"], "properties": {"name": {"type": "string"}, "via": {"type": "array", "items": {"$ref": "#/$defs/place"}, "minItems": 2}}}, "description": "Ready-made routes, each a chain of places in turn (a round trip starts and ends at the same place)."},
+        "avoid": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Station -> why routes keep away from it (a leg to or from one counts as 20 times as far)."},
+        "alone": {"type": "array", "items": {"$ref": "#/$defs/place"}, "description": "Places labelled on the map that lend their name to no passage near them."},
+        "sumps": {"type": "array", "items": {"type": "string"}, "description": "Top-level surveys that are sumps: routes don't dive them."},
+        "note": {"type": "string", "description": "An extra line for the Therion drawing's title block."},
+        "licence": {"type": "string", "description": "The licence line for the Therion drawing's title block."},
+        "routing": {
+          "type": "object",
+          "description": "How the centreline becomes the routes' graph and its names.",
+          "properties": {
+            "duplicates": {"type": "boolean", "default": true, "description": "Duplicate legs join the graph (in some surveys they join the parts)."},
+            "join": {"type": "number", "default": 3.0, "description": "Metres: pieces of the survey this near another are joined (0: never)."},
+            "codes_first": {"type": "boolean", "default": true, "description": "A station's code (codes) names it ahead of the nearest place; false: the nearest place first."},
+            "snap": {"type": "number", "default": 15, "description": "Metres: an entrance further than this from the surveyed cave can't be routed to."}
+          }
+        },
+        "terrain": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {"enum": ["ea", "wales", "flat"], "description": "ea: the Environment Agency's 1 m LiDAR composite DTM (England). wales: the Welsh Government's 1 m LiDAR DTM 2020-22. flat: no LiDAR, a level ground just above the cave."},
+            "step": {"type": "integer", "default": 2, "description": "Metres between the model's ground samples (a multiple of the 1 m LiDAR)."},
+            "margin": {"type": "number", "default": 250, "description": "Metres of ground round the cave."},
+            "align": {"type": "integer", "default": 100, "description": "The ground's edges on a grid of this many metres."},
+            "cache": {"type": ["string", "null"], "default": "lidar", "description": "Where fetched LiDAR is kept, averaged (null: not kept)."},
+            "level": {"type": "number", "description": "flat: the ground's height (default 10 m above the cave's top)."},
+            "credit": {"type": "string", "description": "The ground's credit on the page, HTML (default: the source's own)."}
+          }
+        },
+        "drawn": {
+          "description": "The drawn survey, for the 2D plan.",
+          "oneOf": [
+            {"type": "object", "required": ["type"], "properties": {"type": {"const": "none"}}},
+            {"type": "object", "required": ["type"], "properties": {
+              "type": {"const": "therion-svg", "description": "The plan Therion draws from the survey (survey.type must be therion), with a title block."},
+              "credit": {"type": "string", "description": "For its meta.json (default: the cave's credit)."},
+              "page_credit": {"type": "string", "description": "Its credit on the page, HTML."}
+            }},
+            {"type": "object", "required": ["type", "image", "fit"], "properties": {
+              "type": {"const": "scan", "description": "A scanned drawing, fitted to the survey by python -m caveviewer fit."},
+              "image": {"type": "string", "description": "The drawing. Without it the build makes no drawn survey, so a private drawing kept out of git is only ever in a local build."},
+              "fit": {"type": "string", "description": "The fit (JSON), written by python -m caveviewer fit."},
+              "credit": {"type": "string"},
+              "page_credit": {"type": "string"}
+            }}
+          ]
+        },
+        "walls": {
+          "type": ["object", "null"],
+          "properties": {"lox": {"type": "string", "description": "A Therion .lox file with the passage walls."}},
+          "description": "Passage walls, where there are any."
+        },
+        "georef": {
+          "type": "object",
+          "properties": {"kml": {"type": "string", "description": "A Therion KML export: the imagery is nudged so the entrance lands where it says (OSTN15)."}}
+        },
+        "features": {
+          "type": "object",
+          "description": "The page's features, all on unless turned off.",
+          "properties": {
+            "routes": {"type": "boolean", "default": true, "description": "The route planner."},
+            "drawn": {"type": "boolean", "default": true, "description": "The drawn survey (2D plan)."},
+            "walls": {"type": "boolean", "default": true, "description": "Passage walls."},
+            "ar": {"type": "boolean", "default": true, "description": "View in AR (USDZ, on an iPhone or iPad)."},
+            "offline": {"type": "boolean", "default": true, "description": "The service worker that keeps the page for use with no signal."}
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}
