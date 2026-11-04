@@ -198,11 +198,14 @@ The viewer is `caveviewer/viewer/viewer.html`; `{{NAME}}`, `{{AREA}}`,
 and `{{DRAWN_CREDIT}}` in it are filled in per cave, and the page reads the
 features turned off from `scene.json`'s `features`.
 
-Moving the other cave repos over: [MIGRATING.md](MIGRATING.md).
+## Licence and credits
 
-## Credits
+cave-viewer is free software under the GNU General Public License,
+version 3 ([LICENSE](LICENSE)), as are the cave repos it came from. Its
+AR and VR on Android and headsets (WebXR) is Rich Smith's, from
+[richsmith/draenen](https://github.com/richsmith/draenen).
 
 three.js (MIT) and the Inter font (SIL Open Font Licence) are in
-`caveviewer/viewer/vendor/`, with their licences. Ground: Environment
-Agency and Welsh Government LiDAR, OGL v3. Imagery: Esri. cave-viewer's
-own licence is to be decided before it's published.
+`caveviewer/viewer/vendor/`, with their own licences. A cave's survey data
+keeps its own licence: cave-viewer only builds the site from it. Ground:
+Environment Agency and Welsh Government LiDAR, OGL v3. Imagery: Esri.
