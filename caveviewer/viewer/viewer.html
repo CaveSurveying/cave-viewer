@@ -56,6 +56,15 @@
   #title .ar:hover { background: rgba(59, 143, 176, .55); }
   #title .ar svg { width: 14px; height: 14px; }
   #title .ar[hidden] { display: none; }
+  /* WebXR's overlay on a phone: what to do, and the buttons */
+  #xr-ui { position: fixed; inset: 0; pointer-events: none; color: var(--text); }
+  #xr-ui[hidden] { display: none; }
+  #xr-hint { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 16px; right: 16px; margin: 0 auto; max-width: 340px;
+    padding: 10px 14px; text-align: center; font-size: 14px; }
+  #xr-hint:empty { display: none; }
+  #xr-ui .bar { position: absolute; left: 16px; right: 16px; bottom: max(24px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 340px;
+    display: flex; gap: 8px; padding: 8px; pointer-events: auto; }
+  #xr-ui .btn { padding: 11px 0; font-size: 14px; }
 
   /* controls */
   #panel { position: fixed; left: 16px; bottom: max(34px, calc(env(safe-area-inset-bottom) + 26px)); width: 260px; padding: 12px 14px; }
@@ -364,6 +373,15 @@
   {{GROUND_CREDIT}}
   Imagery: <span id="img-credit">&copy; Esri, Maxar, Earthstar Geographics and the GIS User Community</span> &middot;
   {{DATA_HTML}}<span id="drawn-credit" hidden> &middot; {{DRAWN_CREDIT}}</span>
+</div>
+
+<div id="xr-ui" hidden>
+  <p id="xr-hint" class="glass"></p>
+  <div class="bar glass">
+    <button class="btn" id="xr-smaller">Smaller</button>
+    <button class="btn" id="xr-bigger">Bigger</button>
+    <button class="btn" id="xr-exit">Done</button>
+  </div>
 </div>
 
 <div id="loading"><div class="inner">
@@ -904,9 +922,10 @@ const home = () => viewFrom(Math.PI * 0.8, -0.12, R0 * 1.05);
   }
 }
 
-// -- AR Quick Look -------------------------------------------------------------------------
+// -- AR ------------------------------------------------------------------------------------
 // On an iPhone or iPad, Safari can open a USDZ model in AR Quick Look,
-// set on a table or the floor. The model is exported from what's on
+// set on a table or the floor; elsewhere (Chrome on Android, a headset's
+// browser) the same model is shown in WebXR (see below). The model is built from what's on
 // screen when the button is pressed: walls, centreline and ground as
 // shown, at the current vertical scale, a couple of metres across and
 // lifted off the floor. Quick Look draws only the front of each face
@@ -927,14 +946,11 @@ const home = () => viewFrom(Math.PI * 0.8, -0.12, R0 * 1.05);
 // turned by the phone's compass heading to put its north to the north,
 // and a north arrow lies beside it to check by (and to turn it by, with
 // two fingers, if the compass was out).
-if (FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar')) {
+const quickLook = FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar');
+const webXR = FEATURES.ar && !STILL && !quickLook && 'xr' in navigator && isSecureContext;
+if (quickLook || webXR) {
   const btn = $('ar'), what = $('ar-what');
-  btn.hidden = false;
   let made = null, busy = false;
-  const link = document.createElement('a');
-  link.rel = 'ar';
-  link.download = '{{ID}}.usdz';   // Safari needs a name to know it's a USDZ
-  link.appendChild(document.createElement('img'));   // and an image for it to be an AR link
   const label = () => document.body.classList.contains('routing') ? 'Route in AR' : 'View in AR';
   new MutationObserver(() => { if (!busy) what.textContent = label(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
@@ -1262,7 +1278,9 @@ if (FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar'
     const turn = new THREE.Group(), sc = new THREE.Scene();
     turn.add(group);
     sc.add(turn);
-    const anim = [];
+    // the moving parts, for Quick Look (as the USD time samples) and for
+    // WebXR (the same keys, played each frame)
+    const anim = [], moving = [];
     const depth = k * (box.max.z - box.min.z) / 2, half = k * (box.max.x - box.min.x) / 2, A = 0.12;
     {
       // the base: dark and see-through, a little bigger than the model, with
@@ -1364,13 +1382,15 @@ if (FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar'
         anim.push([m.id, `double3 xformOp:translate.timeSamples = {\n${keys.map(([f, v]) => `\t\t${f}: (${v.x.toFixed(4)}, ${v.y.toFixed(4)}, ${v.z.toFixed(4)}),`).join('\n')}\n\t}\n`
           + `\tquatf xformOp:orient.timeSamples = {\n${keys.map(([f, , o]) => `\t\t${f}: (${o.w.toFixed(5)}, ${o.x.toFixed(5)}, ${o.y.toFixed(5)}, ${o.z.toFixed(5)}),`).join('\n')}\n\t}\n`
           + `\tuniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]`]);
+        moving.push({ m, keys });
       }
       const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r * 4.5 * k, 2), flat(0x7fe3ff)), v = to(here);
       sc.add(m);
+      moving.push({ m, at: v });
       anim.push([m.id, `double3 xformOp:translate = (${v.x.toFixed(4)}, ${v.y.toFixed(4)}, ${v.z.toFixed(4)})\n\tfloat3 xformOp:scale.timeSamples = {\n\t\t0: (1, 1, 1),\n\t\t${LOOP / 2}: (1.4, 1.4, 1.4),\n\t\t${LOOP}: (1, 1, 1),\n\t}\n\tuniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]`]);
       sc.updateMatrixWorld(true);
     }
-    return { scene: sc, anim };
+    return { scene: sc, anim, moving };
   }
 
   // The exporter has no animation, so the moving parts are written into its
@@ -1396,10 +1416,11 @@ if (FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar'
     return zipSync(files, { level: 0 });
   }
 
-  btn.onclick = async () => {
-    if (busy) return;
-    const rt = document.body.classList.contains('routing') && route ? { route } : null;
-    // with a route, the way the phone is facing, to turn the model's north to the north
+  const routeShown = () => document.body.classList.contains('routing') && route ? { route } : null;
+  // With a route, the way the phone is facing, to turn the model's north to
+  // the north (both Quick Look and WebXR set it down facing the way the
+  // phone faces): the yaw for arScene.
+  async function facing(rt) {
     const listen = rt && !compassOn && matchMedia('(pointer: coarse)').matches && 'DeviceOrientationEvent' in window && isSecureContext;
     if (listen) {
       let ok = true;
@@ -1408,31 +1429,377 @@ if (FEATURES.ar && !STILL && document.createElement('a').relList.supports?.('ar'
       }
       if (ok) { heading = null; addEventListener('deviceorientationabsolute', onOrient); addEventListener('deviceorientation', onOrient); }
     }
-    busy = true; what.textContent = 'Preparing…';
     try {
       if (listen) for (let t = 0; t < 8 && heading === null; t++) await new Promise(r => setTimeout(r, 100));
-      const yaw = rt && heading !== null ? Math.round(heading / 5) * 5 * Math.PI / 180 : 0;
-      const key = [world.scale.y, walls?.visible, legs.visible, groundMat.uniforms.uOpacity.value.toFixed(2),
-        rt ? `${routeFrom}>${routeTo}@${cur}:${route.nodes.length}` : '', yaw.toFixed(3)].join();
-      if (made?.key !== key) {
-        const { USDZExporter } = await import('three/addons/exporters/USDZExporter.js');
-        const { scene: sc, anim } = arScene(rt, yaw);
-        const data = await animate(await new USDZExporter().parse(sc, { quickLookCompatible: true }), anim);
-        if (made) URL.revokeObjectURL(made.url);
-        made = { key, url: URL.createObjectURL(new Blob([data], { type: 'model/vnd.usdz+zip' })) };
-        link.href = made.url;
-      }
-    } catch (e) {
-      console.error(e);
-      what.textContent = "AR didn't work";
-      return;
+      return rt && heading !== null ? Math.round(heading / 5) * 5 * Math.PI / 180 : 0;
     } finally {
-      busy = false;
       if (listen && !compassOn) { removeEventListener('deviceorientationabsolute', onOrient); removeEventListener('deviceorientation', onOrient); }
     }
-    what.textContent = label();
-    link.click();
-  };
+  }
+
+  if (quickLook) {
+    btn.hidden = false;
+    const link = document.createElement('a');
+    link.rel = 'ar';
+    link.download = '{{ID}}.usdz';   // Safari needs a name to know it's a USDZ
+    link.appendChild(document.createElement('img'));   // and an image for it to be an AR link
+    btn.onclick = async () => {
+      if (busy) return;
+      const rt = routeShown();
+      busy = true; what.textContent = 'Preparing…';
+      try {
+        const yaw = await facing(rt);
+        const key = [world.scale.y, walls?.visible, legs.visible, groundMat.uniforms.uOpacity.value.toFixed(2),
+          rt ? `${routeFrom}>${routeTo}@${cur}:${route.nodes.length}` : '', yaw.toFixed(3)].join();
+        if (made?.key !== key) {
+          const { USDZExporter } = await import('three/addons/exporters/USDZExporter.js');
+          const { scene: sc, anim } = arScene(rt, yaw);
+          const data = await animate(await new USDZExporter().parse(sc, { quickLookCompatible: true }), anim);
+          if (made) URL.revokeObjectURL(made.url);
+          made = { key, url: URL.createObjectURL(new Blob([data], { type: 'model/vnd.usdz+zip' })) };
+          link.href = made.url;
+        }
+      } catch (e) {
+        console.error(e);
+        what.textContent = "AR didn't work";
+        return;
+      } finally {
+        busy = false;
+      }
+      what.textContent = label();
+      link.click();
+    };
+  }
+
+  // WebXR: the same model, in the page. On a phone, in AR, a ring shows
+  // where it would go on the floor or a table, and a tap sets it down
+  // there, or moves it; Smaller and bigger are buttons over the camera. On
+  // a headset (in AR with passthrough, or in VR) it's set on the floor in
+  // front of you, and the controllers move it: a grip to pick it up and
+  // carry it, both grips to pull it bigger or smaller, the left thumbstick
+  // to slide it across the floor, the right one to turn it and size it, and
+  // the trigger to drag it across the floor, as a mouse drags.
+  if (webXR) {
+    const ui = $('xr-ui'), hint = $('xr-hint');
+    const SIZES = [0.25, 0.5, 1, 2, 4];   // times the model's 2 m across
+    // its own camera: three moves the camera it draws with to the head, and
+    // this one can see things a couple of centimetres away
+    const xrCam = new THREE.PerspectiveCamera(50, 1, 0.02, 200);
+    let mode = null;
+    Promise.all(['immersive-ar', 'immersive-vr'].map(m => navigator.xr.isSessionSupported(m).catch(() => false)))
+      .then(([ar, vr]) => { mode = ar ? 'immersive-ar' : vr ? 'immersive-vr' : null; btn.hidden = !mode; });
+    // a tap on the buttons isn't a tap on the room
+    ui.addEventListener('beforexrselect', e => e.preventDefault());
+
+    btn.onclick = async () => {
+      if (busy || !mode) return;
+      const rt = routeShown(), ar = mode === 'immersive-ar';
+      busy = true; what.textContent = 'Preparing…';
+      let session;
+      try {
+        // straight away, while the tap still counts as one: the browser asks
+        // for that before it starts a session
+        session = await navigator.xr.requestSession(mode, {
+          optionalFeatures: ['local-floor', 'hit-test', ...(ar ? ['dom-overlay'] : [])],
+          ...(ar ? { domOverlay: { root: ui } } : {}),
+        });
+      } catch (e) {
+        console.error(e);
+        what.textContent = "AR didn't work";
+        busy = false;
+        return;
+      }
+      let sc = null, hits = null;
+      session.addEventListener('end', () => {
+        renderer.setAnimationLoop(null);
+        renderer.xr.enabled = false;
+        hits?.cancel();
+        ui.hidden = true;
+        sc?.traverse(o => {
+          o.geometry?.dispose();
+          for (const m of [o.material].flat()) if (m) { m.map?.dispose(); m.emissiveMap?.dispose(); m.dispose(); }
+        });
+        busy = false; what.textContent = label();
+        invalidate();
+      });
+      try {
+        await startXR(session, rt, ar, s => { sc = s; }, h => { hits = h; });
+      } catch (e) {
+        console.error(e);
+        session.end().catch(() => {});
+        what.textContent = "AR didn't work";
+      }
+    };
+
+    // a flat panel of text, `w` metres across, for the headset's hints
+    function panel(lines, w) {
+      const c = document.createElement('canvas'), g = c.getContext('2d'), fs = 40, lh = 58;
+      c.width = 1024; c.height = 40 + lh * lines.length;
+      g.fillStyle = 'rgba(12,16,22,0.85)';
+      g.beginPath(); g.roundRect(0, 0, c.width, c.height, 32); g.fill();
+      g.fillStyle = '#fff'; g.textBaseline = 'middle';
+      lines.forEach(([b, t], i) => {
+        const y = 20 + lh * (i + 0.5);
+        g.font = `700 ${fs}px Inter, system-ui, sans-serif`; g.fillText(b, 36, y);
+        g.font = `400 ${fs}px Inter, system-ui, sans-serif`; g.fillText(t, 300, y);
+      });
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.Mesh(new THREE.PlaneGeometry(w, w * c.height / c.width),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false }));
+    }
+
+    async function startXR(session, rt, ar, keepScene, keepHits) {
+      // a phone has a screen to tap (and the buttons over the camera); a
+      // headset has controllers, and no buttons over the view
+      const headset = !ar || session.interactionMode === 'world-space' || !session.domOverlayState;
+      ui.hidden = headset; hint.textContent = 'Preparing the model…';
+      let floor = true;
+      try { await session.requestReferenceSpace('local-floor'); } catch { floor = false; }
+      renderer.xr.enabled = true;
+      renderer.xr.setReferenceSpaceType(floor ? 'local-floor' : 'local');
+      await renderer.xr.setSession(session);
+      const FLOOR = floor ? 0 : -1.4;   // without the floor's height, a guess at it below the head
+
+      const yaw = headset ? 0 : await facing(rt);
+      const { scene: sc, moving } = arScene(rt, yaw);
+      keepScene(sc);
+      // everything in one group, to set down, move and size together
+      const model = new THREE.Group();
+      while (sc.children.length) model.add(sc.children[0]);
+      sc.add(model);
+      model.visible = false;
+      for (const { m, at } of moving) if (at) m.position.copy(at);
+      // Quick Look lights a model itself; here it needs lights of its own
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x404858, 2.4));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+      sun.position.set(-0.45, 0.8, 0.35);
+      sc.add(sun);
+      if (!ar) {
+        sc.background = new THREE.Color(0x05070c);
+        sc.add(new THREE.GridHelper(20, 40, 0x2a3a4a, 0x16202a).translateY(FLOOR));
+      }
+      // where it would go
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.09, 40).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+      ring.matrixAutoUpdate = false; ring.visible = false;
+      sc.add(ring);
+
+      const step = headset ? headsetControls(session, sc, model, ring, FLOOR) : await phoneControls(session, model, ring, FLOOR, keepHits);
+
+      const t0 = performance.now();
+      let last = t0;
+      renderer.setAnimationLoop((time, frame) => {
+        const dt = Math.min(0.1, (time - last) / 1000);
+        last = time;
+        if (frame) step(frame, renderer.xr.getReferenceSpace(), dt);
+        // the route's dashes running along it, and the current step pulsing
+        const f = ((time - t0) / 1000 * FPS) % LOOP;
+        for (const { m, keys } of moving) {
+          if (!keys) { m.scale.setScalar(1 + 0.4 * (1 - Math.abs(2 * f / LOOP - 1))); continue; }
+          let i = 0;
+          while (i < keys.length - 2 && keys[i + 1][0] <= f) i++;
+          const [fa, va, qa] = keys[i], [fb, vb, qb] = keys[i + 1], w = (f - fa) / (fb - fa);
+          m.position.lerpVectors(va, vb, w);
+          m.quaternion.slerpQuaternions(qa, qb, w);
+        }
+        renderer.render(sc, xrCam);
+      });
+      what.textContent = label();
+    }
+
+    // A phone: the ring where the screen's centre meets the floor or a
+    // table, and a tap to set the model down there.
+    async function phoneControls(session, model, ring, FLOOR, keepHits) {
+      let hits = null, size = SIZES.indexOf(1);
+      try {
+        const viewer = await session.requestReferenceSpace('viewer');
+        hits = await session.requestHitTestSource?.({ space: viewer }) ?? null;
+      } catch { hits = null; }
+      keepHits(hits);
+      if (hits) {
+        hint.textContent = 'Point at the floor or a table, then tap to set the cave down';
+      } else {
+        // no surfaces to find: on the floor, a couple of metres in front
+        model.position.set(0, FLOOR, -2);
+        model.visible = true;
+        hint.textContent = '';
+      }
+      session.addEventListener('select', () => {
+        if (!ring.visible) return;
+        model.position.setFromMatrixPosition(ring.matrix);
+        model.visible = true;
+        hint.textContent = 'Tap somewhere else to move it';
+      });
+      const setSize = d => { size = Math.min(SIZES.length - 1, Math.max(0, size + d)); model.scale.setScalar(SIZES[size]); };
+      $('xr-smaller').onclick = () => setSize(-1);
+      $('xr-bigger').onclick = () => setSize(1);
+      $('xr-exit').onclick = () => session.end();
+      return (frame, ref) => {
+        if (!hits) return;
+        // only somewhere flat, facing up (not a wall)
+        const r = frame.getHitTestResults(hits).map(h => h.getPose(ref)).find(p => p && p.transform.matrix[5] > 0.8);
+        ring.visible = !!r;
+        if (r) ring.matrix.fromArray(r.transform.matrix);
+      };
+    }
+
+    // A headset: set down on the floor in front of you, then the
+    // controllers (or hands: a pinch is the trigger, a fist the grip).
+    function headsetControls(session, sc, model, ring, FLOOR) {
+      const UP = new THREE.Vector3(0, 1, 0), fwd = new THREE.Vector3(), v = new THREE.Vector3();
+      const yawOf = (x, z) => Math.atan2(-x, -z);
+      const poseYaw = q => (fwd.set(0, 0, -1).applyQuaternion(q), yawOf(fwd.x, fwd.z));
+      const MIN = 0.05, MAX = 8;   // times the model's 2 m across
+
+      // each controller's ray, as far as the floor
+      const rayMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+      const rayGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]);
+      const rays = new Map();   // inputSource -> { line, ray: { o, d }, grip: { p, q } }
+      const help = panel([
+        ['Grip', 'pick it up and carry it'],
+        ['Both grips', 'pull apart or together to size it'],
+        ['Left stick', 'slide it across the floor'],
+        ['Right stick', 'turn it, and size it'],
+        ['Trigger', 'hold, and drag it across the floor'],
+        ['Menu', 'the headset’s own button, to leave'],
+      ], 0.5);
+      help.visible = false; help.renderOrder = 10;
+      sc.add(help);
+      let placed = false, helpUntil = 0;
+
+      // what's held: the hands' and the model's places when the grips went on
+      const held = new Set();
+      let from = null;
+      const grab = () => {
+        const hs = [...held].map(s => rays.get(s)?.grip).filter(Boolean);
+        from = hs.length ? { hs: hs.map(h => ({ p: h.p.clone(), yaw: poseYaw(h.q) })), at: model.position.clone(), yaw: model.rotation.y, s: model.scale.x } : null;
+      };
+      session.addEventListener('squeezestart', e => { held.add(e.inputSource); grab(); helpUntil = Math.min(helpUntil, performance.now() + 4000); });
+      session.addEventListener('squeezeend', e => { held.delete(e.inputSource); grab(); });
+      session.addEventListener('inputsourceschange', e => {
+        for (const s of e.removed) { held.delete(s); sc.remove(rays.get(s)?.line); rays.delete(s); if (drag?.s === s) drag = null; }
+        grab();
+      });
+      // the trigger drags it, as a mouse button does: the spot on the floor
+      // under the ray when it's pulled stays under the ray until it's let go
+      let drag = null;
+      session.addEventListener('selectstart', e => {
+        const r = rays.get(e.inputSource);
+        if (r?.hit && !held.size) drag = { s: e.inputSource, start: r.hit.clone(), at: model.position.clone() };
+      });
+      session.addEventListener('selectend', e => { if (drag?.s === e.inputSource) drag = null; });
+
+      return (frame, ref, dt) => {
+        // the first frame: on the floor a metre and a bit in front, north away
+        // from you, with what the controllers do floating above it
+        if (!placed) {
+          const p = frame.getViewerPose(ref);
+          if (!p) return;
+          const m = new THREE.Matrix4().fromArray(p.transform.matrix), head = new THREE.Vector3().setFromMatrixPosition(m);
+          const q = new THREE.Quaternion().setFromRotationMatrix(m), y = poseYaw(q);
+          v.set(0, 0, -1.3).applyAxisAngle(UP, y);
+          model.position.set(head.x + v.x, FLOOR, head.z + v.z);
+          model.rotation.y = y;
+          model.visible = placed = true;
+          v.set(0, 0, -0.9).applyAxisAngle(UP, y);
+          help.position.set(head.x + v.x, head.y - 0.15, head.z + v.z);
+          help.rotation.set(-0.15, y, 0, 'YXZ');
+          help.visible = true;
+          helpUntil = performance.now() + 30000;
+        }
+        if (help.visible && performance.now() > helpUntil) help.visible = false;
+
+        ring.visible = false;
+        for (const s of session.inputSources) {
+          if (s.targetRayMode !== 'tracked-pointer') continue;
+          let r = rays.get(s);
+          if (!r) {
+            r = { line: new THREE.Line(rayGeo, rayMat) };
+            r.line.matrixAutoUpdate = false;
+            sc.add(r.line);
+            rays.set(s, r);
+          }
+          const tp = frame.getPose(s.targetRaySpace, ref);
+          const gp = (s.gripSpace && frame.getPose(s.gripSpace, ref)) || tp;
+          r.line.visible = !!tp;
+          r.hit = null;
+          if (gp) {
+            const m = new THREE.Matrix4().fromArray(gp.transform.matrix);
+            r.grip = { p: new THREE.Vector3().setFromMatrixPosition(m), q: new THREE.Quaternion().setFromRotationMatrix(m) };
+          }
+          if (!tp) continue;
+          // the ray, to where it meets the floor the model stands on (or 4 m)
+          const m = new THREE.Matrix4().fromArray(tp.transform.matrix);
+          const o = new THREE.Vector3().setFromMatrixPosition(m), d = new THREE.Vector3(0, 0, -1).transformDirection(m);
+          let len = 4;
+          if (d.y < -0.05) {
+            const t = (model.position.y - o.y) / d.y;
+            if (t > 0 && t < 15) { len = t; r.hit = o.clone().addScaledVector(d, t); }
+          }
+          r.line.matrix.copy(m).multiply(new THREE.Matrix4().makeScale(1, 1, len));
+          if (r.hit && !held.size && (!drag || drag.s === s)) { ring.matrix.makeTranslation(r.hit.x, model.position.y + 0.002, r.hit.z); ring.visible = true; }
+        }
+
+        // dragging it
+        if (drag && held.size) drag = null;
+        const dh = drag && rays.get(drag.s)?.hit;
+        if (dh) {
+          model.position.x = drag.at.x + dh.x - drag.start.x;
+          model.position.z = drag.at.z + dh.z - drag.start.z;
+        }
+
+        // carrying it: with one hand it goes where the hand goes, turning as
+        // the hand turns; with two, it turns and sizes with the line between them
+        const hs = [...held].map(s => rays.get(s)?.grip).filter(Boolean);
+        if (from && hs.length === from.hs.length && hs.length) {
+          let turn, k = 1, pivot, pivot0;
+          if (hs.length === 1) {
+            turn = poseYaw(hs[0].q) - from.hs[0].yaw;
+            pivot = hs[0].p; pivot0 = from.hs[0].p;
+          } else {
+            const [a0, b0] = from.hs, [a, b] = hs;
+            const dx0 = b0.p.x - a0.p.x, dz0 = b0.p.z - a0.p.z, dx = b.p.x - a.p.x, dz = b.p.z - a.p.z;
+            turn = yawOf(dx, dz) - yawOf(dx0, dz0);
+            k = THREE.MathUtils.clamp(from.s * Math.hypot(dx, dz) / Math.max(0.02, Math.hypot(dx0, dz0)), MIN, MAX) / from.s;
+            pivot = a.p.clone().add(b.p).multiplyScalar(0.5); pivot0 = a0.p.clone().add(b0.p).multiplyScalar(0.5);
+          }
+          // (sized across from between the hands, but not up and down, so it
+          // grows from where it stands rather than into the floor)
+          v.subVectors(from.at, pivot0).applyAxisAngle(UP, turn);
+          v.x *= k; v.z *= k;
+          model.position.addVectors(pivot, v);
+          model.rotation.y = from.yaw + turn;
+          model.scale.setScalar(from.s * k);
+        } else if (from && hs.length !== from.hs.length) grab();
+
+        // the thumbsticks, as in most headset games: the left one slides it
+        // across the floor, the way you're facing (faster the bigger it is);
+        // the right one turns it (left and right) and sizes it (up and down)
+        if (held.size < 2) {
+          let tx = 0, ty = 0, px = 0, pz = 0;
+          for (const s of session.inputSources) {
+            const ax = s.gamepad?.axes;
+            if (!ax?.length) continue;
+            let x = ax.length >= 4 ? ax[2] : ax[0], y = ax.length >= 4 ? ax[3] : ax[1];
+            if (Math.abs(x) < 0.2) x = 0;
+            if (Math.abs(y) < 0.2) y = 0;
+            if (s.handedness === 'right') { tx += x; ty += y; } else { px += x; pz += y; }
+          }
+          if (tx || ty) {
+            model.rotation.y -= tx * 1.6 * dt;
+            model.scale.setScalar(THREE.MathUtils.clamp(model.scale.x * Math.exp(-ty * 1.2 * dt), MIN, MAX));
+          }
+          const head = (px || pz) && frame.getViewerPose(ref);
+          if (head) {
+            const y = poseYaw(new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().fromArray(head.transform.matrix)));
+            v.set(px, 0, pz).applyAxisAngle(UP, y).multiplyScalar(0.8 * Math.max(1, model.scale.x) * dt);
+            model.position.add(v);
+          }
+          if (held.size && (tx || ty || head)) grab();
+        }
+      };
+    }
+  }
 }
 
 // -- controls --------------------------------------------------------------------------------
@@ -2837,6 +3204,7 @@ addEventListener('resize', invalidate);
 controls.addEventListener('change', invalidate);
 function frame() {
   framePending = false;
+  if (renderer.xr.isPresenting) return;   // WebXR draws the AR model itself (and asks again when it ends)
   // at most a tenth of a second per frame: after the tab has been hidden the
   // first frame would otherwise turn the model through the whole time away
   const now = performance.now(), dt = Math.min(clock.getDelta(), 0.1);
