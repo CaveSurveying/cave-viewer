@@ -100,3 +100,19 @@ class Config:
         if cave['survey']['type'] == 'therion':
             return os.path.join(self.work_dir(cave), 'cave.3d')
         return self.at(cave['survey']['file'])
+
+    def read_centreline(self, cave):
+        """(legs, stations) from the cave's .3d, moved so grid.fix's station is
+        at its place (for a survey in its own local coordinates), if it says."""
+        from caveviewer.formats import read_3d
+        legs, stations = read_3d(self.centreline(cave))
+        fix = cave['grid'].get('fix')
+        if fix:
+            at = next((p for n, p, f in stations if n == fix['station']), None)
+            if at is None:
+                raise ConfigError(f'{cave["name"]}: grid.fix: no station {fix["station"]!r} in the survey')
+            d = [fix['at'][k] - at[k] for k in range(3)]
+            mv = lambda p: (round(p[0] + d[0], 2), round(p[1] + d[1], 2), round(p[2] + d[2], 2))
+            legs = [(mv(a), mv(b), f) for a, b, f in legs]
+            stations = [(n, mv(p), f) for n, p, f in stations]
+        return legs, stations

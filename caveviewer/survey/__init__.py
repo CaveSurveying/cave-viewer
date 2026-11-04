@@ -17,7 +17,8 @@ import sys
 from caveviewer.formats import read_3d
 
 # the names config, each kept in names.json as it is (with its default)
-NAME_KEYS = (('ways', list), ('offway', lambda: 1.6), ('codes', dict), ('avoid', dict), ('alone', list), ('trips', list), ('sumps', list))
+NAME_KEYS = (('ways', list), ('offway', lambda: 1.6), ('codes', dict), ('avoid', dict), ('alone', list), ('trips', list), ('sumps', list),
+             ('apart', list))
 
 
 def default_entrances(cave, stations):
@@ -50,7 +51,7 @@ def build(cfg, cave, fetch=True):
         from caveviewer.survey import therion
         return therion.build(cfg, cave, fetch)
     # a Survex .3d: its names from the names file (if any) and the config
-    legs, stations = read_3d(cfg.centreline(cave))
+    legs, stations = cfg.read_centreline(cave)
     nm = names_json(cfg, cave, {}, f'Made by caveviewer from {cave["survey"]["file"]} and the config.',
                     default_entrances(cave, stations))
     print(f'{cave["name"]}: {len(nm["entrances"])} entrance(s), {len(nm["places"])} places', file=sys.stderr)

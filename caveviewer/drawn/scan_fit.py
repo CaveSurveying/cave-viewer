@@ -80,7 +80,7 @@ def fit(cfg, cave):
     W, H = im.size
     sm = np.asarray(im.resize((W // K, H // K), Image.BOX)).astype(int)
     print(f'drawing {W}x{H}', file=sys.stderr)
-    legs, stations = read_3d(cfg.centreline(cave))
+    legs, stations = cfg.read_centreline(cave)
     stations = [(n, (p[0] + SO[0], p[1] + SO[1], p[2]), f) for n, p, f in stations]
 
     # 1. the entrances

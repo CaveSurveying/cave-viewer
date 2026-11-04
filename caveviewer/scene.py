@@ -265,7 +265,7 @@ def build(cfg, cave, out_dir, chromium=None):
     """The cave's 3D view in out_dir."""
     SO = tuple(cave['grid']['offset'])            # survey coordinates to the full National Grid
     T, R = cave['terrain'], cave['routing']
-    legs, stations = read_3d(cfg.centreline(cave))
+    legs, stations = cfg.read_centreline(cave)
     xs, ys, zs = zip(*[p for a, b, f in legs if not f & 1 for p in (a, b)])
 
     # the ground: the cave's extent plus a margin, on a grid of `align` metres
@@ -354,7 +354,7 @@ def build(cfg, cave, out_dir, chromium=None):
         p = rel(where[k])
         i = min(main, key=lambda i: math.dist(gpos(i), p))
         e = {'t': t, 'p': p, 'entrance': True}
-        if math.dist(gpos(i), p) > R['snap']:
+        if math.dist(gpos(i), p) > R['snap'] or t in nm.get('apart', ()):     # (too far from the cave, or kept out of the routes by name)
             e['apart'] = True
         ents.append(e)
     names = ents + names

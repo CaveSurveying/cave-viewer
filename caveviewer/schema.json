@@ -45,7 +45,9 @@
         "grid": {
           "type": "object",
           "properties": {
-            "offset": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "default": [0, 0], "description": "Added to the survey's x, y for full National Grid coordinates: [300000, 100000] for a survey on the ST square, [0, 0] for one already on the full grid."}
+            "offset": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "default": [0, 0], "description": "Added to the survey's x, y for full National Grid coordinates: [300000, 100000] for a survey on the ST square, [0, 0] for one already on the full grid."},
+            "fix": {"type": "object", "required": ["station", "at"], "description": "For a survey in its own local coordinates: the whole survey moved so this station is at this place (x, y in the survey's grid square, as offset makes full, and the height).",
+              "properties": {"station": {"type": "string"}, "at": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}}}
           }
         },
         "survey": {
@@ -89,6 +91,7 @@
         "offway": {"type": "number", "default": 1.6, "description": "How many times as far a passage off the usual ways counts."},
         "trips": {"type": "array", "items": {"type": "object", "required": ["name", "via"], "properties": {"name": {"type": "string"}, "via": {"type": "array", "items": {"$ref": "#/$defs/place"}, "minItems": 2}}}, "description": "Ready-made routes, each a chain of places in turn (a round trip starts and ends at the same place)."},
         "avoid": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Station -> why routes keep away from it (a leg to or from one counts as 20 times as far)."},
+        "apart": {"type": "array", "items": {"$ref": "#/$defs/place"}, "description": "Entrances shown but kept out of the routes (their tie into the cave provisional, say)."},
         "alone": {"type": "array", "items": {"$ref": "#/$defs/place"}, "description": "Places labelled on the map that lend their name to no passage near them."},
         "sumps": {"type": "array", "items": {"type": "string"}, "description": "Top-level surveys that are sumps: routes don't dive them."},
         "note": {"type": "string", "description": "An extra line for the Therion drawing's title block."},
