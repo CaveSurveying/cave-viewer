@@ -2521,7 +2521,7 @@ let routeHash = '';
 function writeHash() {
   if (STILL) return;
   const h = routeHash ? [routeHash] : [];
-  if (drawn.on) h.push('plan=1');
+  if (drawn.on || drawn.want) h.push('plan=1');      // (and while it waits for the drawing, or an update with it)
   else {
     const vs = +$('exag').querySelector('.on').dataset.v, g = groundMat.uniforms.uOpacity.value;
     if (vs !== 1) h.push(`vs=${vs}`);

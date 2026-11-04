@@ -52,7 +52,7 @@ def georef(path):
     x = a + k * E and y = b - k * N (SVG units, survey coordinates)."""
     root = ET.parse(path).getroot()
     vb = [float(v) for v in root.get('viewBox').split()]
-    marks = []
+    marks, turned = [], []
 
     def walk(el, m):
         m = mul(m, matrix(el.get('transform')))
@@ -63,14 +63,21 @@ def georef(path):
             # the label's own origin is the grid point plus LABEL, in the drawing's up-is-up units
             x, y = m[4] - m[0] * LABEL[0] - m[2] * LABEL[1], m[5] - m[1] * LABEL[0] - m[3] * LABEL[1]
             marks.append((float(g[1]), float(g[2]), x, y))
+            turned.append(abs(m[1]) > 1e-3)
             return
         for c in el:
             walk(c, m)
     walk(root, (1, 0, 0, 1, 0, 0))
     if len(marks) < 3:
         raise ValueError(f'{path}: too few grid labels ({len(marks)}) to place the drawing')
+    if any(turned):
+        raise ValueError(f'{path}: the plan is turned (to true north?): draw it with north grid in its layout')
     E, N, X, Y = (np.array(v) for v in zip(*marks))
-    k = SCALE / 500                         # (the layout's 1:500)
+    # the scale from the labels' spacing (1:500 is SCALE / 500 units a metre;
+    # a layout with a base-scale draws at another), else 1:500
+    ks = [(X[i] - X[j]) / (E[i] - E[j]) for i in range(len(E)) for j in range(i) if abs(E[i] - E[j]) > 1]
+    ks += [(Y[j] - Y[i]) / (N[i] - N[j]) for i in range(len(N)) for j in range(i) if abs(N[i] - N[j]) > 1]
+    k = float(np.median(ks)) if ks else SCALE / 500
     a, b = np.median(X - k * E), np.median(Y + k * N)
     # (the labels along the top sit below their points, inside the frame: the median leaves them out)
     agree = int(((np.abs(X - k * E - a) < 0.05 * k) & (np.abs(Y + k * N - b) < 0.05 * k)).sum())
@@ -90,7 +97,8 @@ def title_block(cave, scene, credits, x, y, width):
              (10, 400, f"{st['length'] / 1000:.1f} km surveyed \u00b7 {st['depth']} m deep \u00b7 entrance {scene['grid_ref']} \u00b7 plan at 1:500, coloured by altitude")]
     text = [f'Surveyed by {who}.' if who else '', cave.get('note', ''),
             f'Copyright {rights}.' if rights else '', cave.get('licence', ''),
-            f"Drawn by Therion from the {cave['survey'].get('from', 'survey data')}/{cave['survey']['dir']}. Grid: the National Grid, 100 m squares."]
+            ('Drawn by Therion' + (f" from the {cave['survey'].get('from', 'survey data')}/{cave['survey']['dir']}" if cave['survey'].get('dir') else '')
+             + '. Grid: the National Grid, 100 m squares.')]
     wrap = max(40, int(width / (9 * 0.52)))
     for t in text:
         lines += [(9, 400, w) for w in textwrap.wrap(t, wrap)]
@@ -134,7 +142,8 @@ def render(path, vb, R, extra='', chrome=None):
 
 def build(cfg, cave, site_dir, chromium=None):
     SO = cave['grid']['offset']
-    src = os.path.join(cfg.work_dir(cave), 'plan.svg')
+    # the plan the survey step drew, or one the repo's own Therion build drew (drawn.svg)
+    src = cfg.at(cave['drawn']['svg']) if cave['drawn'].get('svg') else os.path.join(cfg.work_dir(cave), 'plan.svg')
     out = os.path.join(site_dir, 'drawn')
     scene = json.load(open(os.path.join(site_dir, 'scene.json')))
     ox, oy = scene['origin'][0] - SO[0], scene['origin'][1] - SO[1]       # the scene's origin, in survey coordinates
@@ -142,11 +151,12 @@ def build(cfg, cave, site_dir, chromium=None):
     # Therion's frame is a little tight (the grid's labels at the edge are
     # cut): a margin all round
     m = MARGIN * k
-    credits = json.load(open(os.path.join(cfg.work_dir(cave), 'credits.json')))
+    cf = os.path.join(cfg.work_dir(cave), 'credits.json')
+    credits = json.load(open(cf)) if os.path.exists(cf) else {}       # (a Therion survey's surveyors, where there is one)
     block, bh = title_block(cave, scene, credits, vb[0], vb[1] + vb[3] + m, vb[2])
     vb = [vb[0] - m, vb[1] - m, vb[2] + 2 * m, vb[3] + 2 * m + bh]
     R = 1 / (LEVEL1 * k)                                                   # pixels a unit at LEVEL1
-    print(f'{cave["name"]}: placed by its grid labels ({agree} of {n} agree to 5 cm); drawing it', file=sys.stderr)
+    print(f'{cave["name"]}: placed by its grid labels ({agree} of {n} agree to 5 cm, 1:{SCALE / k:.0f}); drawing it', file=sys.stderr)
     im = render(src, vb, R, block, chromium)
     # scene metres <-> pixels of im: E = sx + ox; x = a + k E; px = (x - vb[0]) R
     px = lambda sx: (a + k * (sx + ox) - vb[0]) * R

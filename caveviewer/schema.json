@@ -121,7 +121,8 @@
           "oneOf": [
             {"type": "object", "required": ["type"], "properties": {"type": {"const": "none"}}},
             {"type": "object", "required": ["type"], "properties": {
-              "type": {"const": "therion-svg", "description": "The plan Therion draws from the survey (survey.type must be therion), with a title block."},
+              "type": {"const": "therion-svg", "description": "A plan Therion has drawn, with a title block: the one the survey step draws (a Therion survey), or drawn.svg."},
+              "svg": {"type": "string", "description": "A plan the repo's own Therion build has drawn (export map -fmt svg), for any survey type. Its layout needs the grid's coordinates on it, to place it: grid bottom and grid-coords border."},
               "credit": {"type": "string", "description": "For its meta.json (default: the cave's credit)."},
               "page_credit": {"type": "string", "description": "Its credit on the page, HTML."}
             }},
