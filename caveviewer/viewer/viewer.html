@@ -533,6 +533,9 @@ world.scale.y = 1;              // (true to life to start with: the buttons stre
 // the vertical scale the cave is on its way to, while it's squashing to the
 // 2D plan or back: a view worked out meanwhile aims for where the cave will be
 let vsTo = null;
+// compass mode (below): the phone's heading, which then alone turns the view
+let heading = null, compassOn = false, compassWait = 0;
+const compassTurning = () => compassOn && heading !== null;
 const vsFinal = () => vsTo ?? world.scale.y;
 scene.add(world);
 const P = (p, out = new THREE.Vector3()) => out.set(p[0], p[2] - zRef, -p[1]);
@@ -897,7 +900,7 @@ function flyTo(v, ms = 1600) {
   // to run, it went on turning the view once the fly had landed
   const damp = controls.enableDamping; controls.enableDamping = false; controls.update(); controls.enableDamping = damp;
   fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: v.pos, t1: v.target, start: performance.now(), ms };
-  if (v.turn) {
+  if (v.turn || compassTurning()) {
     fly.s0 = new THREE.Spherical().setFromVector3(fly.p0.clone().sub(fly.t0));
     fly.s1 = new THREE.Spherical().setFromVector3(v.pos.clone().sub(v.target));
     fly.s1.theta = fly.s0.theta + Math.atan2(Math.sin(fly.s1.theta - fly.s0.theta), Math.cos(fly.s1.theta - fly.s0.theta));
@@ -1995,11 +1998,11 @@ const PLAN_MIN = 8;              // metres: the nearest the camera comes to the 
 // From straight above, the paper upright, d metres up from the drawing
 // (looking at its level, not the cave's height: that's squashed away, and
 // a target left up there would drop as the cave flattens, the view with it)
-const planView = (t, d) => { t = t.clone().setY(0); return { pos: t.clone().add(new THREE.Vector3().setFromSphericalCoords(d, 0.001, drawn.az)), target: t, turn: true }; };
+const planView = (t, d) => { t = t.clone().setY(0); return { pos: t.clone().add(new THREE.Vector3().setFromSphericalCoords(d, 0.001, drawn.turned ?? drawn.az)), target: t, turn: true }; };
 // On: the cave squashed onto the drawing, from straight above with the
 // paper upright, so its writing reads level (and kept
 // there, once there: turning and zooming, but no tilting), dragged about
-// like a map: left drag or one finger pans, right drag turns. Off: back to
+// like a map: left drag or one finger pans, right drag or a twist turns. Off: back to
 // the height, ground, view and controls it had.
 function setDrawn(on) {
   if (on === drawn.on || !drawn.ready) return;
@@ -2010,10 +2013,11 @@ function setDrawn(on) {
   $('drawn-credit').hidden = !on;
   const d = Math.min(R0, Math.max(150, camera.position.distanceTo(controls.target))), MS = 1400;
   if (on) {
+    drawn.turned = null;                  // (upright to start with: a turn of yours then stays, from step to step)
     drawn.was = { vs: vsFinal(), ground: groundMat.uniforms.uOpacity.value, mouse: { ...controls.mouseButtons }, touch: { ...controls.touches }, minD: controls.minDistance };
     controls.minDistance = PLAN_MIN;   // (close enough to read the smallest writing, and no closer: not through the paper)
     controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
-    controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };    // (and a twist turns it: see below)
     groundFlat(true);
     drawn.group.visible = true;
     setGround(0);
@@ -2102,7 +2106,6 @@ function faceNorth() {
 // moving about and the route's steps all still work; only the turning is
 // the phone's. It needs a phone with a compass, and the page over https
 // (or localhost); elsewhere a tap just faces north.
-let heading = null, compassOn = false, compassWait = 0;
 function onOrient(e) {
   let h = null;
   if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;            // iOS: degrees from north
@@ -2138,7 +2141,7 @@ $('compass').onclick = async () => {
   }
   setCompass(true);
 };
-// each frame: turn the view smoothly to the heading (not while flying to a step)
+// each frame: turn the view smoothly to the heading (flying to a step too)
 const compSph = new THREE.Spherical(), compOff = new THREE.Vector3();
 function compassFrame() {
   if (!compassOn) return;
@@ -2146,7 +2149,7 @@ function compassFrame() {
     if (performance.now() - compassWait > 2000) { setCompass(false); faceNorth(); }   // no compass after all
     return;
   }
-  if (fly || userHolding) return;
+  if (userHolding) return;
   compOff.copy(camera.position).sub(controls.target);
   compSph.setFromVector3(compOff);
   // the camera looks the way of the heading: it sits on the other side of the centre
@@ -2659,6 +2662,7 @@ function stepView(s) {
 }
 // How long to fly to a step: long enough to follow its turn, the sharper the longer
 function stepMs(v) {
+  if (compassTurning()) return 1400;       // (no turn to follow: that's the phone's)
   const off = v.pos.clone().sub(v.target), a = Math.atan2(off.x, off.z) - controls.getAzimuthalAngle();
   return 1400 + 2200 * Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) / Math.PI;
 }
@@ -2724,6 +2728,7 @@ function waysNotTaken(s) {
 function goStep(k, fly = true, whole = false) {
   if (!route) return;
   // keep the distance you were viewing a step from, if you'd zoomed
+  if (drawn.on && !flying()) drawn.turned = controls.getAzimuthalAngle();
   if (stepShown && !flying()) {
     const d = Math.min(600, Math.max(controls.minDistance, camera.position.distanceTo(controls.target)));
     if (drawn.on) planStepDist = d; else stepDist = d;
@@ -3042,6 +3047,35 @@ canvas.addEventListener('touchstart', () => { controls.zoomSpeed = 1; }, { captu
   addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !e.buttons) letGo(); }, { capture: true });
   addEventListener('blur', letGo);
 }
+// On the 2D plan, two fingers twisted turn it round them, as on a map, once
+// they've twisted far enough not to be just a pinch.
+{
+  const FREE = 5 * Math.PI / 180;
+  let last = null, sum = 0, turning = false;
+  const angle = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX);
+  canvas.addEventListener('touchstart', e => { last = e.touches.length === 2 ? angle(e.touches) : null; sum = 0; turning = false; }, { capture: true, passive: true });
+  canvas.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || last === null || !drawn.on || compassOn) return;
+    const a = angle(e.touches);
+    let d = Math.atan2(Math.sin(a - last), Math.cos(a - last));
+    last = a;
+    if (!turning) {
+      sum += d;
+      if (Math.abs(sum) < FREE) return;
+      turning = true; d = sum;
+    }
+    // the fingers turn the drawing one way on the screen, so the camera and its
+    // centre go the other way round the point between them
+    const ray = pointerRay((e.touches[0].clientX + e.touches[1].clientX) / 2, (e.touches[0].clientY + e.touches[1].clientY) / 2);
+    const k = (controls.target.y - camera.position.y) / ray.y, px = camera.position.x + ray.x * k, pz = camera.position.z + ray.z * k;
+    const c = Math.cos(-d), s = Math.sin(-d);
+    for (const v of [camera.position, controls.target]) {
+      const x = v.x - px, z = v.z - pz;
+      v.x = px + x * c - z * s; v.z = pz + x * s + z * c;
+    }
+    invalidate();
+  }, { capture: true, passive: true });
+}
 // the survey station nearest a point on the screen, or -1 if none is close
 function stationAt(x, y, within = 28) {
   const r = canvas.getBoundingClientRect(), v = new THREE.Vector3();
@@ -3276,10 +3310,12 @@ function frame() {
   const now = performance.now(), dt = Math.min(clock.getDelta(), 0.1);
   if (fly) {
     const t = Math.min(1, (now - fly.start) / fly.ms), e = ease(t);
+    // (in compass mode a fly moves and zooms, and stays turned as it is: the heading's own)
+    const held = compassTurning() ? Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z) : null;
     controls.target.lerpVectors(fly.t0, fly.t1, e);
     if (fly.s0) {
       const a = fly.s0, b = fly.s1, lerp = (x, y) => x + (y - x) * e;
-      camera.position.setFromSphericalCoords(lerp(a.radius, b.radius), lerp(a.phi, b.phi), lerp(a.theta, b.theta)).add(controls.target);
+      camera.position.setFromSphericalCoords(lerp(a.radius, b.radius), lerp(a.phi, b.phi), held ?? lerp(a.theta, b.theta)).add(controls.target);
     } else camera.position.lerpVectors(fly.p0, fly.p1, e);
     if (t >= 1) { fly = null; idleSince = now; if (drawn.tween) drawn.tween.landed = true; }    // (it aimed for where the cave's going: nothing to move after)
   }
