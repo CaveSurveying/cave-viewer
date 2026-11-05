@@ -62,7 +62,7 @@ the survey (below).
 | walls | `walls.lox` | a Therion `.lox` with the passage walls |
 
 And the page's features, all on unless the config turns them off:
-`features: {"routes", "drawn", "walls", "ar", "offline"}`.
+`features: {"routes", "directions", "drawn", "walls", "ar", "offline"}`.
 
 Every key is in [`caveviewer/schema.json`](caveviewer/schema.json) (a JSON
 Schema, with a description for each). Paths are relative to the config's
