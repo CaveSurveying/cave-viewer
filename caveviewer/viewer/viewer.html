@@ -529,6 +529,10 @@ controls.zoomToCursor = true;     // zoom towards what's under the pointer, not 
 const zRef = zBot - 10;
 const world = new THREE.Group();
 world.scale.y = 1;              // (true to life to start with: the buttons stretch it)
+// the vertical scale the cave is on its way to, while it's squashing to the
+// 2D plan or back: a view worked out meanwhile aims for where the cave will be
+let vsTo = null;
+const vsFinal = () => vsTo ?? world.scale.y;
 scene.add(world);
 const P = (p, out = new THREE.Vector3()) => out.set(p[0], p[2] - zRef, -p[1]);
 
@@ -866,7 +870,7 @@ const centre = new THREE.Vector3();
   const b = new THREE.Box3().setFromBufferAttribute(legs.geometry.attributes.position);
   b.getCenter(centre);
 }
-const target = () => new THREE.Vector3(centre.x, centre.y * world.scale.y, centre.z);
+const target = () => new THREE.Vector3(centre.x, centre.y * vsFinal(), centre.z);
 const R0 = Math.max(W, HH) * 0.7;
 // the limits and fog follow the size of the ground
 controls.minDistance = 2;
@@ -1836,6 +1840,7 @@ $('exag').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
   [...$('exag').children].forEach(x => x.classList.toggle('on', x === b));
   if (drawn.on) { drawn.was.vs = +b.dataset.v; return; }    // (for back in 3D)
+  if (drawn.tween) { drawn.tween.vs[1] = vsTo = +b.dataset.v; return; }   // (on its way back from the plan: to this instead)
   const k = +b.dataset.v / world.scale.y;
   world.scale.y = +b.dataset.v;
   controls.target.y *= k;
@@ -2004,7 +2009,7 @@ function setDrawn(on) {
   $('drawn-credit').hidden = !on;
   const d = Math.min(R0, Math.max(150, camera.position.distanceTo(controls.target))), MS = 1400;
   if (on) {
-    drawn.was = { vs: world.scale.y, ground: groundMat.uniforms.uOpacity.value, mouse: { ...controls.mouseButtons }, touch: { ...controls.touches }, minD: controls.minDistance };
+    drawn.was = { vs: vsFinal(), ground: groundMat.uniforms.uOpacity.value, mouse: { ...controls.mouseButtons }, touch: { ...controls.touches }, minD: controls.minDistance };
     controls.minDistance = PLAN_MIN;   // (close enough to read the smallest writing, and no closer: not through the paper)
     controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
     controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
@@ -2012,8 +2017,8 @@ function setDrawn(on) {
     drawn.group.visible = true;
     setGround(0);
     const t = controls.target.clone(); t.y = 0;
-    drawn.tween = { vs: [world.scale.y, PLAN_VS], start: performance.now(), ms: MS };
-    flyTo(planView(t, d), MS);
+    drawn.tween = { vs: [world.scale.y, PLAN_VS], start: performance.now(), ms: MS }; vsTo = PLAN_VS;
+    flyTo(routeView() || planView(t, d), MS);
     drawn.lockAt = performance.now() + MS;
     drawn.sharpen?.();
   } else {
@@ -2021,12 +2026,12 @@ function setDrawn(on) {
     controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI;
     controls.mouseButtons = p.mouse; controls.touches = p.touch; controls.minDistance = p.minD;
     groundFlat(false);
-    const t = controls.target.clone(); t.y = target().y * p.vs / world.scale.y;
-    drawn.tween = { vs: [world.scale.y, p.vs], start: performance.now(), ms: MS };
-    setGround(p.ground);
+    drawn.tween = { vs: [world.scale.y, p.vs], start: performance.now(), ms: MS }; vsTo = p.vs;
+    const t = controls.target.clone(); t.y = target().y;
+    setGround($('route').hidden ? p.ground : 0);        // (a route keeps it away, and puts it back when it closes)
     setTimeout(() => { if (!drawn.on) drawn.group.visible = false; invalidate(); }, MS);
     const az = controls.getAzimuthalAngle(), el = 0.75;
-    flyTo({ pos: t.clone().add(new THREE.Vector3(d * Math.cos(el) * Math.sin(az), d * Math.sin(el), d * Math.cos(el) * Math.cos(az))), target: t, turn: true }, MS);
+    flyTo(routeView() || { pos: t.clone().add(new THREE.Vector3(d * Math.cos(el) * Math.sin(az), d * Math.sin(el), d * Math.cos(el) * Math.cos(az))), target: t, turn: true }, MS);
   }
   invalidate(); writeHash();
 }
@@ -2046,9 +2051,9 @@ function drawnFrame(now) {
   const tw = drawn.tween;
   if (tw) {
     const t = Math.min(1, (now - tw.start) / tw.ms), vs = tw.vs[0] + (tw.vs[1] - tw.vs[0]) * ease(t);
-    if (!fly) controls.target.y *= vs / world.scale.y;
+    if (!fly && !tw.landed) controls.target.y *= vs / world.scale.y;
     world.scale.y = vs;
-    if (t >= 1) drawn.tween = null;
+    if (t >= 1) { drawn.tween = null; vsTo = null; }
   }
   if (drawn.on && drawn.lockAt && now > drawn.lockAt && !fly) { controls.minPolarAngle = controls.maxPolarAngle = 0; drawn.lockAt = 0; }
   if (drawn.on && now - drawnSharpAt > 400) { drawnSharpAt = now; drawn.sharpen?.(); }
@@ -2089,7 +2094,7 @@ function drawnFrame(now) {
 }
 function faceNorth() {
   const off = camera.position.clone().sub(controls.target), d = off.length(), el = Math.asin(off.y / d);
-  flyTo({ pos: controls.target.clone().add(new THREE.Vector3(0, d * Math.sin(el), d * Math.cos(el))), target: controls.target.clone() }, 900);
+  flyTo({ pos: controls.target.clone().add(new THREE.Vector3(0, d * Math.sin(el), d * Math.cos(el))), target: controls.target.clone(), turn: true }, 900);
 }
 // Compass mode, as in a phone's map app: the view turns with the way the
 // phone is facing, so turning round turns the survey with you. Zoom, tilt,
@@ -2474,6 +2479,7 @@ function setCurtain(nodes) {
 routeGroup.visible = false;
 const lift = p => P(p);   // drawn on top of everything, so it needs no lift off the centreline
 const toWorld = p => { const v = P(p); v.y *= world.scale.y; return v; };
+const toFinal = p => { const v = P(p); v.y *= vsFinal(); return v; };     // (for a view to fly to)
 const toWorldInto = (p, v) => { P(p, v); v.y *= world.scale.y; return v; };
 
 // the route's dashes move for a few seconds after each step, showing the way
@@ -2619,11 +2625,18 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   if (step > 0) goStep(Math.min(step, steps.length - 1), fly); else showOverview(fly);
 }
 
+// the open route's view, as things are now (2D or 3D), to fly to when they change, or null
+const routeView = () => route ? { ...(stepShown ? stepView(steps[cur]) : overview()), turn: true } : null;
+
 function closeRoute() {
   route = null; routeGroup.visible = false; onRoute = new Set();
   legsWide.material.opacity = 1; legsWide.material.transparent = false;
   $('route').hidden = true; document.body.classList.remove('routing');
-  if (groundBefore !== null) { setGround(groundBefore); groundBefore = null; }
+  if (groundBefore !== null) {
+    if (drawn.on) drawn.was.ground = groundBefore;       // (on the plan: for back in 3D, not over the drawing)
+    else setGround(groundBefore);
+    groundBefore = null;
+  }
   routeHash = ''; writeHash();
 }
 
@@ -2632,20 +2645,20 @@ function closeRoute() {
 // Each step: from behind and above the junction, facing the way you arrive,
 // at the distance you're viewing from (85 m to begin with), so zooming in or
 // out stays as you left it from step to step.
-let stepDist = 85, stepShown = false;
+let stepDist = 85, planStepDist = 50, stepShown = false;     // (50 m up on the plan: close enough for the drawing's sharpest tiles)
 function stepView(s) {
-  const i = s.i, here = toWorld(route.p(i));
+  const i = s.i, here = toFinal(route.p(i));
   const b = (i ? route.dirAt(i, -1) : null) ?? route.dirAt(i, +1) ?? 0, r = b * Math.PI / 180;
   const fwd = new THREE.Vector3(Math.sin(r), 0, -Math.cos(r));
   const target = here.clone().addScaledVector(fwd, 10);
-  if (drawn.on) return planView(here, stepDist * 1.6);      // (on the drawing: upright, to read it)
+  if (drawn.on) return planView(here, planStepDist);        // (on the drawing: upright, to read it)
   const dist = stepDist, el = 0.45;
   const pos = target.clone().addScaledVector(fwd, -dist * Math.cos(el)).add(new THREE.Vector3(0, dist * Math.sin(el), 0));
   return { pos, target };
 }
 function overview() {
   const box = new THREE.Box3();
-  route.nodes.forEach(n => box.expandByPoint(toWorld(gp(n))));
+  route.nodes.forEach(n => box.expandByPoint(toFinal(gp(n))));
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   const a = route.p(0), b = route.p(route.nodes.length - 1);
   const az = Math.atan2(b[0] - a[0], b[1] - a[1]) + Math.PI / 2;     // side on to the way
@@ -2703,7 +2716,10 @@ function waysNotTaken(s) {
 function goStep(k, fly = true, whole = false) {
   if (!route) return;
   // keep the distance you were viewing a step from, if you'd zoomed
-  if (stepShown && !flying()) stepDist = Math.min(600, Math.max(12, camera.position.distanceTo(controls.target)));
+  if (stepShown && !flying()) {
+    const d = Math.min(600, Math.max(controls.minDistance, camera.position.distanceTo(controls.target)));
+    if (drawn.on) planStepDist = d; else stepDist = d;
+  }
   dashUntil = performance.now() + 4000;
   if (k < 0) { showOverview(fly); return; }
   cur = Math.min(steps.length - 1, k);
@@ -2834,7 +2850,7 @@ $('r-trip').onchange = e => { const t = TRIPS.find(t => t.name === e.target.valu
 // and comes back as it was when the route is closed
 let groundBefore = null;
 function showRoute(from, to, step = 0, via = []) {
-  if ($('route').hidden) { groundBefore = groundMat.uniforms.uOpacity.value; setGround(0); }
+  if ($('route').hidden) { groundBefore = drawn.on ? drawn.was.ground : groundMat.uniforms.uOpacity.value; setGround(0); }
   if ($('route').hidden && innerWidth <= 640) $('route').classList.add('compact');
   $('route').hidden = false; document.body.classList.add('routing');
   openRoute(from, to, step, true, via);
@@ -3029,7 +3045,7 @@ function focusAt(x, y) {
   if (picking) return;
   const best = stationAt(x, y);
   if (best < 0) return;
-  const t = toWorldInto(gp(best), new THREE.Vector3());
+  const t = toFinal(gp(best));
   const off = camera.position.clone().sub(controls.target);
   off.setLength(Math.min(off.length(), 60));
   setSpin(false);
@@ -3252,7 +3268,7 @@ function frame() {
       const a = fly.s0, b = fly.s1, lerp = (x, y) => x + (y - x) * e;
       camera.position.setFromSphericalCoords(lerp(a.radius, b.radius), lerp(a.phi, b.phi), lerp(a.theta, b.theta)).add(controls.target);
     } else camera.position.lerpVectors(fly.p0, fly.p1, e);
-    if (t >= 1) { fly = null; idleSince = now; }
+    if (t >= 1) { fly = null; idleSince = now; if (drawn.tween) drawn.tween.landed = true; }    // (it aimed for where the cave's going: nothing to move after)
   }
   // spin, pausing while someone is handling the model and for a few seconds after
   controls.autoRotate = spinning && !drawn.on && !fly && !userHolding && now - idleSince > 4000;   // (a map stays still)

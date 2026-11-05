@@ -75,7 +75,7 @@ folder.
 
    ```
    # requirements.txt: cave-viewer, pinned to a tag
-   cave-viewer @ git+https://github.com/CaveSurveying/cave-viewer@v0.5.0
+   cave-viewer @ git+https://github.com/CaveSurveying/cave-viewer@v0.5.1
    ```
 
    ```
@@ -149,7 +149,7 @@ folder.
    permissions: { contents: read, pages: write, id-token: write }
    jobs:
      site:
-       uses: CaveSurveying/cave-viewer/.github/workflows/build.yml@v0.5.0
+       uses: CaveSurveying/cave-viewer/.github/workflows/build.yml@v0.5.1
        with:
          config: caves.json
          apt-packages: therion survex subversion   # for a Therion survey
