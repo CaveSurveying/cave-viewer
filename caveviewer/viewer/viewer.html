@@ -2774,8 +2774,12 @@ function goStep(k, fly = true, whole = false) {
   li?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   drawProfileMarker();
   routeHash = `${routeQuery()}&step=${cur}`; writeHash();
+  const firstStep = !stepShown && !whole;
   stepShown = !whole;
   document.body.classList.toggle('route-step', stepShown);
+  // on a phone, setting off along the route makes room for the cave (once:
+  // pull the panel up again and it stays up from step to step)
+  if (firstStep && innerWidth <= 640) sheetTo('peek');
   if (fly) { const v = whole ? overview() : stepView(s); flyTo(v, whole ? 1600 : stepMs(v)); }
 }
 
@@ -2919,7 +2923,7 @@ $('r-close').onclick = closeRoute;
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
   }
-  sheetTo = st => { if (state() === 'peek' || st === 'full') setSheet(st); };
+  sheetTo = st => { if (state() === 'peek' || st === 'full' || st === 'peek') setSheet(st); };
   $('r-grab').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(state() === 'peek' ? 'half' : 'peek'); } });
 }
 $('r-from').onchange = () => openRoute($('r-from').value, $('r-to').value);
