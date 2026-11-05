@@ -13,7 +13,7 @@ import os
 SURVEYS = ('therion', 'survex')
 TERRAINS = ('ea', 'wales', 'flat')
 DRAWN = ('therion-svg', 'scan', 'none')
-FEATURES = ('routes', 'drawn', 'walls', 'ar', 'offline')
+FEATURES = ('routes', 'directions', 'drawn', 'walls', 'ar', 'offline')
 
 # what a cave has where neither it nor the defaults say
 BASE = {

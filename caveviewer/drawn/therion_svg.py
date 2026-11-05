@@ -15,12 +15,15 @@ import tempfile
 import textwrap
 import json
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from xml.sax.saxutils import escape
 
 import numpy as np
 from PIL import Image
 
 from caveviewer.drawn import LEVEL0, LEVEL1, TILE, blank
+
+LEVEL2 = 0.03125                # metres a pixel: the finest level, from the vector plan, for when the camera's closest
 
 CHROME = os.environ.get('CHROMIUM') or '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 CHUNK = 4096                    # pixels: Chrome draws the plan this much at a time
@@ -113,7 +116,7 @@ def title_block(cave, scene, credits, x, y, width):
 def render(path, vb, R, extra='', chrome=None):
     """The whole plan as an image, R pixels a unit, on white paper, over
     the given viewBox (which may be bigger than the plan's own)."""
-    W, H = math.ceil(vb[2] * R), math.ceil(vb[3] * R)
+    W, H = math.ceil(vb[2] * R - 1e-6), math.ceil(vb[3] * R - 1e-6)
     out = Image.new('RGB', (W, H), 'white')
     with tempfile.TemporaryDirectory() as tmp:
         svg = open(path, encoding='utf-8').read()
@@ -134,6 +137,7 @@ def render(path, vb, R, extra='', chrome=None):
                     f'<img src="file://{os.path.abspath(path)}" style="position:absolute;left:{-x}px;top:{-y}px;width:{W}px;height:{H}px"></body></html>')
                 shot = os.path.join(tmp, 's.png')
                 subprocess.run([chrome or CHROME, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files',
+                                f'--user-data-dir={os.path.join(tmp, "profile")}',     # (its own, so several can draw at once)
                                 f'--window-size={w},{h}', f'--screenshot={shot}', 'file://' + page],
                                check=True, capture_output=True, timeout=300)
                 out.paste(Image.open(shot).convert('RGB').crop((0, 0, w, h)), (x, y))
@@ -170,7 +174,7 @@ def build(cfg, cave, site_dir, chromium=None):
     x0, y0 = math.floor(min(xs) / span0) * span0, math.ceil(max(ys) / span0) * span0
     nx0, ny0 = math.ceil((max(xs) - x0) / span0), math.ceil((y0 - min(ys)) / span0)
     per = round(LEVEL0 / LEVEL1)
-    for d in ('0', '1'):
+    for d in ('0', '1', '2'):
         os.makedirs(os.path.join(out, d), exist_ok=True)
         for f in os.listdir(os.path.join(out, d)):
             os.remove(os.path.join(out, d, f))
@@ -179,7 +183,8 @@ def build(cfg, cave, site_dir, chromium=None):
         for i in range(nx0):
             # the big tile at full detail, then its parts and itself made smaller
             L, T = px(x0 + i * span0), py(y0 - j * span0)
-            big = im.crop((round(L), round(T), round(L) + TILE * per, round(T) + TILE * per))   # (white beyond the drawing)
+            big = Image.new('RGB', (TILE * per, TILE * per), 'white')           # (white beyond the drawing)
+            big.paste(im, (-round(L), -round(T)))
             if blank(big):
                 continue
             big.resize((TILE, TILE), Image.BOX).save(os.path.join(out, '0', f'{i}_{j}.webp'), quality=82)
@@ -191,6 +196,25 @@ def build(cfg, cave, site_dir, chromium=None):
                         I, J = i * per + ii, j * per + jj
                         t.save(os.path.join(out, '1', f'{I}_{J}.webp'), quality=80)
                         tiles1.append([I, J])
-    json.dump({'x0': x0, 'y0': y0, 'tile': TILE, 'level0': LEVEL0, 'level1': LEVEL1, 'tiles0': tiles0, 'tiles1': tiles1,
+    # the finest level: each close-up tile drawn again, from the vector plan
+    # (a piece at a time: the whole cave at this size wouldn't fit in memory)
+    per2, R2, span2 = round(LEVEL1 / LEVEL2), 1 / (LEVEL2 * k), TILE * LEVEL2
+
+    def finer(t):
+        I, J = t
+        X, Y = a + k * (x0 + I * span1 + ox), b - k * (y0 - J * span1 + oy)
+        big = render(src, [X, Y, span1 * k, span1 * k], R2, block, chromium)
+        made = []
+        for jj in range(per2):
+            for ii in range(per2):
+                part = big.crop((ii * TILE, jj * TILE, (ii + 1) * TILE, (jj + 1) * TILE))
+                if not blank(part):
+                    FI, FJ = I * per2 + ii, J * per2 + jj
+                    part.save(os.path.join(out, '2', f'{FI}_{FJ}.webp'), quality=78)
+                    made.append([FI, FJ])
+        return made
+    with ThreadPoolExecutor(4) as pool:
+        tiles2 = [t for made in pool.map(finer, tiles1) for t in made]
+    json.dump({'x0': x0, 'y0': y0, 'tile': TILE, 'level0': LEVEL0, 'level1': LEVEL1, 'level2': LEVEL2, 'tiles0': tiles0, 'tiles1': tiles1, 'tiles2': tiles2,
                'paper': paper, 'credit': cave['drawn'].get('credit', cave['credit'])}, open(os.path.join(out, 'meta.json'), 'w'))
-    print(f'  {out}: {len(tiles0)} tiles, {len(tiles1)} close up', file=sys.stderr)
+    print(f'  {out}: {len(tiles0)} tiles, {len(tiles1)} close up, {len(tiles2)} closest', file=sys.stderr)

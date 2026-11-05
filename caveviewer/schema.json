@@ -152,6 +152,7 @@
           "description": "The page's features, all on unless turned off.",
           "properties": {
             "routes": {"type": "boolean", "default": true, "description": "The route planner."},
+            "directions": {"type": "boolean", "default": true, "description": "The route's written directions (each step's text, the list of steps and the printable card). Off: the route, its height profile and Back and Next, with more room for the cave."},
             "drawn": {"type": "boolean", "default": true, "description": "The drawn survey (2D plan)."},
             "walls": {"type": "boolean", "default": true, "description": "Passage walls."},
             "ar": {"type": "boolean", "default": true, "description": "View in AR (USDZ, on an iPhone or iPad)."},

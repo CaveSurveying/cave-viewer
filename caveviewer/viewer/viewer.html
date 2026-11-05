@@ -163,6 +163,8 @@
   #route .pick label span { width: 30px; }
   #route .pick .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   #route .pick .trip { grid-column: 1 / 3; }
+  /* a cave whose route text is turned off: the route, its height and Back and Next, with more room for the cave */
+  body.no-directions #r-d, body.no-directions #r-steps, body.no-directions #route #r-print { display: none !important; }
   #route .pick .trip[hidden] { display: none; }     /* (a cave with no trips: the label's display: flex would show it) */
   #route select { flex: 1; min-width: 0; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .12);
     border-radius: 8px; padding: 5px 6px; font: inherit; font-size: 13px; }
@@ -444,7 +446,8 @@ try {
 }
 
 const st = S.stats;
-const FEATURES = { routes: true, drawn: true, walls: true, ar: true, offline: true, ...S.features };   // (the cave's config can turn any off)
+const FEATURES = { routes: true, directions: true, drawn: true, walls: true, ar: true, offline: true, ...S.features };   // (the cave's config can turn any off)
+if (!FEATURES.directions) document.body.classList.add('no-directions');
 if (!FEATURES.routes) $('r-open').style.display = 'none';
 $('chips').innerHTML = [
   `<span class="chip"><b>${(st.length / 1000).toFixed(1)} km</b> surveyed</span>`,
@@ -1920,12 +1923,26 @@ const PLAN_MIN = 8;              // metres: the nearest the camera comes to the 
       coarse(i0, j0).then(t => { if (t && !m.userData.sharp) { mat.uniforms.map.value = t; m.visible = true; invalidate(); } });
       group.add(m); drawn.meshes.push(m);
     }
+    // closest of all, where the drawing has it (a plan Therion drew can be as
+    // sharp as we like), finer tiles over those: only ever the few near the camera
+    const span2 = M.tile * (M.level2 || 0), plane2 = M.tiles2 ? new THREE.PlaneGeometry(span2, span2).rotateX(-Math.PI / 2) : null;
+    const finest = (M.tiles2 || []).map(([I, J]) => {
+      const mat = new THREE.ShaderMaterial({ ...sheet, uniforms: uniforms(0, new THREE.Vector2()) });
+      mat.uniforms.uvSc.value = 1;
+      const m = new THREE.Mesh(plane2, mat);
+      m.position.set(M.x0 + (I + 0.5) * span2, SHEET_Y, -(M.y0 - (J + 0.5) * span2));
+      m.renderOrder = -0.5; m.visible = false;
+      m.userData = { I, J, sharp: null, loading: false };
+      group.add(m);
+      return m;
+    });
     drawn.group = group; drawn.ready = true;
     $('drawn-row').hidden = false;
     if (drawn.want) { setDrawn(true); if (route) goStep(cur); }      // (from the address: the route's view, on the plan)
     // for use with no signal, all of it (once the service worker's in charge:
     // it saves what's fetched), a few at a time
-    const urls = [...M.tiles0.map(([i, j]) => `drawn/0/${i}_${j}.webp`), ...M.tiles1.map(([i, j]) => `drawn/1/${i}_${j}.webp`)];
+    const urls = [...M.tiles0.map(([i, j]) => `drawn/0/${i}_${j}.webp`), ...M.tiles1.map(([i, j]) => `drawn/1/${i}_${j}.webp`),
+      ...(M.tiles2 || []).map(([i, j]) => `drawn/2/${i}_${j}.webp`)];
     const keep = async () => {
       if (keep.done || !navigator.serviceWorker?.controller || STILL) return;
       keep.done = true;
@@ -1951,6 +1968,19 @@ const PLAN_MIN = 8;              // metres: the nearest the camera comes to the 
         } else if (d > 450 && u.sharp) {
           u.sharp.dispose(); u.sharp = null;
           coarse(Math.floor(u.I / per), Math.floor(u.J / per)).then(t => { mu.map.value = t; mu.uvOff.value.copy(u.off0); mu.uvSc.value = 1 / per; invalidate(); });
+        }
+      }
+      for (const [m, d] of finest.map(m => [m, camera.position.distanceTo(m.position)]).sort((a, b) => a[1] - b[1])) {
+        const u = m.userData;
+        if (d < 60 && !u.sharp && !u.loading && busy < 4) {
+          u.loading = true; busy++;
+          load(`drawn/2/${u.I}_${u.J}.webp`).then(t => {
+            busy--; u.loading = false;
+            if (!t) return;
+            u.sharp = t; m.material.uniforms.map.value = t; m.visible = true; invalidate();
+          });
+        } else if (d > 100 && u.sharp) {
+          m.visible = false; m.material.uniforms.map.value = null; u.sharp.dispose(); u.sharp = null;
         }
       }
     };
@@ -2642,7 +2672,7 @@ function showOverview(fly = true) {
   $('r-arrow').innerHTML = '<circle cx="7" cy="23" r="3.5" fill="#4fd18b"/><circle cx="23" cy="7" r="3.5" fill="#ff6b6b"/><path d="M10 23 H17 a4 4 0 0 0 0-8 H13 a4 4 0 0 1 0-8 H19" fill="none" stroke="#ffd27a" stroke-width="2.2" stroke-linecap="round"/>';
   $('r-n').textContent = `Whole route · ${steps.count} steps`;
   $('r-d').textContent = `${routeFrom} to ${routeTo}: ${fmtM(st.length)}, ${Math.round(st.up)} m up and ${Math.round(st.down)} m down, between ${Math.round(st.low)} and ${Math.round(st.high)} m.`;
-  $('r-m').innerHTML = names.length ? `Through ${names.map(escHtml).join(' → ')}` : '';
+  $('r-m').innerHTML = names.length && FEATURES.directions ? `Through ${names.map(escHtml).join(' → ')}` : '';
   $('r-prev').disabled = true; $('r-next').disabled = false;
   $('r-steps').querySelectorAll('li.on').forEach(x => x.classList.remove('on'));
   $('r-steps').scrollTop = 0;
@@ -2712,7 +2742,7 @@ function goStep(k, fly = true, whole = false) {
     : `${s.num ? `Step ${s.num} of ${steps.count} · ` : ''}after ${fmtM(route.chain[s.i] - prevD)} · ${fmtM(route.length - route.chain[s.i])} to go`;
   $('r-d').textContent = s.text;
   const stn = G.stn[route.nodes[s.i]];
-  $('r-m').innerHTML = [route.passageAt(s.i) && `in <b>${route.passageAt(s.i)}</b>`, `${Math.round(route.p(s.i)[2])} m`, stn && `stn ${stn}`].filter(Boolean).join(' · ');
+  $('r-m').innerHTML = [route.passageAt(s.i) && `in <b>${route.passageAt(s.i)}</b>`, `${Math.round(route.p(s.i)[2])} m`, FEATURES.directions && stn && `stn ${stn}`].filter(Boolean).join(' · ');
   $('r-prev').disabled = false; $('r-next').disabled = cur === steps.length - 1;
   const li = $('r-steps').querySelector(`li[data-k="${cur}"]`);
   $('r-steps').querySelectorAll('li.on').forEach(x => x.classList.remove('on'));
@@ -2949,13 +2979,19 @@ canvas.addEventListener('wheel', e => {
   const dir = pointerRay(e.clientX, e.clientY).multiplyScalar(step);
   camera.position.add(dir); controls.target.add(dir);
 }, { capture: true, passive: false });
+// (a touch's zoom is the controls' own, at their own speed)
+canvas.addEventListener('touchstart', () => { controls.zoomSpeed = 1; }, { capture: true, passive: true });
 // Safari pinches with gesture events instead: made into the same pinch steps
 {
   let last = 1, wheeled = 0;
   canvas.addEventListener('wheel', e => { if (e.ctrlKey && e.isTrusted) wheeled = performance.now(); }, { capture: true, passive: true });
+  // (a Mac's trackpad only: a phone or tablet's pinch is already the controls'
+  // touch zoom, and these on top of it zoomed far too fast)
+  const trackpad = !navigator.maxTouchPoints;
   canvas.addEventListener('gesturestart', e => { last = 1; e.preventDefault(); });
   canvas.addEventListener('gesturechange', e => {
     e.preventDefault();
+    if (!trackpad) return;
     const dy = -100 * Math.log(e.scale / last); last = e.scale;
     if (performance.now() - wheeled < 300 || !dy) return;     // (pinching as wheel steps already)
     canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, clientX: e.clientX, clientY: e.clientY, ctrlKey: true, cancelable: true }));
