@@ -122,3 +122,34 @@ class Config(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Walls(unittest.TestCase):
+    """Walls from plan drawings, put back on the survey (scene.fit_walls)."""
+    def leg_and_walls(self, lift, splay_up=None):
+        legs = [((0, 0, 0), (10, 0, 0), 0)]
+        if splay_up:
+            legs.append(((0, 0, 0), (0, 0, splay_up), 4))
+        # a box round the leg, 2 m wide and 2 m high, lifted by `lift`
+        pts = [(x, y, z + lift) for x in (0, 10) for y in (-1, 1) for z in (-1, 1)]
+        return legs, [(pts, [(0, 1, 2), (1, 2, 3)])]
+
+    def test_moved_back_onto_the_leg(self):
+        sys.path.insert(0, ROOT)
+        from caveviewer.scene import fit_walls
+        legs, walls = self.leg_and_walls(12)
+        z = [p[2] for p in fit_walls(walls, legs)[0][0]]
+        self.assertAlmostEqual(min(z), -1, places=3)
+        self.assertAlmostEqual(max(z), 1, places=3)
+
+    def test_left_alone_when_on_the_leg(self):
+        from caveviewer.scene import fit_walls
+        legs, walls = self.leg_and_walls(0.5)
+        self.assertEqual([p[2] for p in fit_walls(walls, legs)[0][0]], [p[2] for p in walls[0][0]])
+
+    def test_roof_raised_to_the_splays(self):
+        from caveviewer.scene import fit_walls
+        legs, walls = self.leg_and_walls(0, splay_up=3)
+        z = [p[2] for p in fit_walls(walls, legs)[0][0]]
+        self.assertAlmostEqual(max(z), 3, places=3)        # (up to where the splay reached)
+        self.assertAlmostEqual(min(z), -1, places=3)       # (no splay down: the floor stays)

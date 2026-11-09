@@ -59,7 +59,8 @@ the survey (below).
 | drawn survey | `therion-svg` | the plan Therion draws, placed by its grid labels, with a title block |
 | | `scan` | a scanned drawing, fitted to the survey (`python -m caveviewer fit`) |
 | | `none` | |
-| walls | `walls.lox` | a Therion `.lox` with the passage walls |
+| walls | `walls.type: therion` | built by Therion from a Therion survey's drawings (not its splays), then put back on the centreline and pushed out to the splays |
+| | `walls.lox` | a Therion `.lox` with the passage walls, already in the repo |
 
 And the page's features, all on unless the config turns them off:
 `features: {"routes", "directions", "drawn", "walls", "ar", "offline"}`.

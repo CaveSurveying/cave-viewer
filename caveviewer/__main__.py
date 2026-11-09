@@ -83,7 +83,7 @@ def main(argv=None):
             for cave in cfg.caves:
                 off = [k for k, v in cave['features'].items() if not v]
                 print(f"{cave['id']}: {cave['name']} -> {cave['path']}/  survey {cave['survey']['type']}, "
-                      f"terrain {cave['terrain']['type']}, drawn {cave['drawn']['type']}, walls {'lox' if cave['walls'] else 'none'}"
+                      f"terrain {cave['terrain']['type']}, drawn {cave['drawn']['type']}, walls {(cave['walls'].get('type') or 'lox') if cave['walls'] else 'none'}"
                       + (f"; off: {', '.join(off)}" if off else ''))
             print(f"index: {'yes' if cfg.site['index'] else 'no'}")
     except ConfigError as e:

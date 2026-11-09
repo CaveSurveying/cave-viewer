@@ -81,6 +81,8 @@ class Config:
             for k in ('checkout', 'dir', 'source'):
                 if not c['survey'].get(k):
                     raise ConfigError(f'{where}: survey.{k} is required for a Therion survey')
+        elif c['walls'] and c['walls'].get('type') == 'therion':
+            raise ConfigError(f'{where}: walls from the drawings (walls.type "therion") need a Therion survey')
         elif c['drawn']['type'] == 'therion-svg' and not c['drawn'].get('svg'):
             raise ConfigError(f'{where}: a therion-svg drawn survey needs a Therion survey, or drawn.svg (a plan Therion has drawn)')
         if c['survey']['type'] == 'survex' and not c['survey'].get('file'):

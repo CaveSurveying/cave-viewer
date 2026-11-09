@@ -37,6 +37,11 @@ def checkout(cfg, survey, fetch=True):
         subprocess.run(['svn', 'checkout', '-q', survey['svn'], reg], check=True)
 
 
+def from_drawings(cave):
+    """Whether the cave's walls are to come from its Therion drawings (walls.type \"therion\")."""
+    return bool(cave['walls']) and cave['walls'].get('type') == 'therion'
+
+
 def build(cfg, cave, fetch=True):
     sv = cave['survey']
     checkout(cfg, sv, fetch)
@@ -54,6 +59,9 @@ def build(cfg, cave, fetch=True):
         f'export model -fmt survex -o {out}/cave.3d',
         f'export map -proj plan -fmt svg -layout web -o {out}/plan.svg',
         f'export map -proj plan -fmt esri -o {out}/esri',
+        # the passage walls, from the drawings only (by default Therion also
+        # builds them from every splay, which come out as spikes)
+        *([f'export model -fmt loch -wall-source maps -o {out}/walls.lox'] if from_drawings(cave) else []),
         'layout web',
         *(['copy common'] if common else []),
         'scale 1 500', 'colour map-bg transparent', 'colour map-fg altitude', 'debug off',

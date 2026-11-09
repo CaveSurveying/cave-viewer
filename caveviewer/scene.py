@@ -250,6 +250,82 @@ def ways(g, nm, at):
     return sorted(on)
 
 
+MOVED = 3.0       # metres: walls whose middle is this far above or below their leg are put back on it
+
+
+def fit_walls(walls, legs):
+    """Walls built from plan drawings, put back on the survey. A plan has no
+    heights, so Therion guesses them, and where a drawing covers passages at
+    different levels some walls end up metres above or below their passage.
+    Here each wall point keeps its place in plan but is hung from the leg it
+    belongs to (the nearest in plan, or of those nearly as near, the one
+    nearest Therion's guess of its height). Where a leg's walls sit more than
+    MOVED metres above or below it, they're moved back round it, keeping their
+    shape. And where the splays at a leg's stations reach higher or lower than
+    its walls, the roof and floor are raised and lowered to meet them (never
+    brought in). Otherwise Therion's walls are left as they are."""
+    import numpy as np
+    seg = [(a, b) for a, b, f in legs if not f & 5 and a != b]
+    if not seg or not walls:
+        return walls
+    A, B = np.array([s[0] for s in seg], float), np.array([s[1] for s in seg], float)
+    # how high and low the splays reach from each station
+    reach, on = {}, {tuple(np.round(p, 2)) for s in seg for p in s}
+    for a, b, f in legs:
+        if f & 4 and not f & 1:
+            if tuple(np.round(a, 2)) not in on:          # (a splay may run either way: from its station or to it)
+                a, b = b, a
+            k = tuple(np.round(a, 2))
+            up, down = reach.get(k, (0.0, 0.0))
+            reach[k] = (max(up, b[2] - a[2]), max(down, a[2] - b[2]))
+    ends = [[reach.get(tuple(np.round(p, 2))) for p in (a, b)] for a, b in seg]
+    pts = np.array([p for ps, ts in walls for p in ps], float)
+    AB = B - A
+    L2 = np.maximum((AB[:, :2] ** 2).sum(1), 1e-9)
+    leg, at, zc = np.zeros(len(pts), int), np.zeros(len(pts)), np.zeros(len(pts))
+    for i0 in range(0, len(pts), 2000):
+        P = pts[i0:i0 + 2000]
+        t = np.clip(((P[:, None, :2] - A[None, :, :2]) * AB[None, :, :2]).sum(2) / L2, 0, 1)
+        C = A[None] + t[..., None] * AB[None]
+        d = np.hypot(*(P[:, None, :2] - C[..., :2]).transpose(2, 0, 1))
+        dz = np.abs(P[:, None, 2] - C[..., 2])
+        near = d <= d.min(1, keepdims=True) + 1.5          # (passages at other levels, nearly as near in plan)
+        j = np.where(near, dz, np.inf).argmin(1)
+        r = np.arange(len(P))
+        leg[i0:i0 + 2000], at[i0:i0 + 2000], zc[i0:i0 + 2000] = j, t[r, j], C[r, j, 2]
+    off = pts[:, 2] - zc
+    z = pts[:, 2].copy()
+    for j in np.unique(leg):
+        m = leg == j
+        mid = np.median(off[m])
+        if abs(mid) > MOVED:
+            # this leg's walls are off at another level: back round the leg, the same shape
+            z[m] -= mid
+        if ends[j][0] or ends[j][1]:
+            # as high and low as the splays at its stations reach, where that's further
+            e = [x for x in ends[j] if x]
+            up, down = max(x[0] for x in e), max(x[1] for x in e)
+            o = z[m] - zc[m]
+            z[m] = zc[m] + np.where(o > 0, np.maximum(o, np.minimum(o * 4, up)), np.minimum(o, np.maximum(o * 4, -down)))
+    out, k = [], 0
+    for ps, ts in walls:
+        out.append(([(p[0], p[1], float(z[k + i])) for i, p in enumerate(ps)], ts))
+        k += len(ps)
+    return out
+
+
+def steep(pts, tri, step):
+    """A wall triangle that is a curtain rather than a wall: more than step
+    metres tall and well over twice as tall as it is wide. Walls Therion
+    builds from plan drawings get their heights from the stations near
+    them, and where one drawing covers passages at different levels it
+    joins them with these, straight down from one level to the other."""
+    v = [pts[i] for i in tri]
+    dz = max(p[2] for p in v) - min(p[2] for p in v)
+    across = max(math.dist(a[:2], b[:2]) for a in v for b in v)
+    return dz > step and dz > 2.5 * across
+
+
 def kml_entrance(path):
     """(lat, lon) of the entrance in a Therion KML export (placed with OSTN15), or None."""
     if not path or not os.path.exists(path):
@@ -307,16 +383,29 @@ def build(cfg, cave, out_dir, chromium=None):
         k = 'surface' if f & 1 else 'splays' if f & 4 else 'duplicates' if f & 2 else 'legs'
         kinds[k] += rel(a) + rel(b)
 
-    # the passage walls, where there are any (a Therion .lox)
+    # the passage walls, where there are any (a Therion .lox: one in the repo,
+    # or the one the survey step built from the drawings)
     wall_pos, wall_idx, lox = [], [], cave['walls'] and cfg.at(cave['walls'].get('lox'))
+    if cave['walls'] and cave['walls'].get('type') == 'therion':
+        lox = os.path.join(cfg.work_dir(cave), 'walls.lox')
     if lox and cave['features']['walls']:
         if os.path.exists(lox):
-            for pts, tris in read_lox_walls(lox):
+            max_step = cave['walls'].get('max_step')     # (off unless asked for: it leaves holes where a passage really does step down)
+            cut = 0
+            meshes = read_lox_walls(lox)
+            if cave['walls'].get('heights', 'survey' if cave['walls'].get('type') == 'therion' else 'lox') == 'survey':
+                meshes = fit_walls(meshes, legs)
+            for pts, tris in meshes:
                 base = len(wall_pos) // 3
                 for p in pts:
                     wall_pos += rel(p)
                 for t in tris:
+                    if max_step and steep(pts, t, max_step):
+                        cut += 1
+                        continue
                     wall_idx += [base + i for i in t]
+            if cut:
+                print(f'walls: left out {cut} steep triangles (curtains between levels)', file=sys.stderr)
         else:
             print(f'no walls: {lox} is missing', file=sys.stderr)
 

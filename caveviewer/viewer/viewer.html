@@ -615,7 +615,7 @@ const legsWide = new LineSegments2(
   legsWide.material.resolution.set(innerWidth, innerHeight);
   world.add(legsWide);
 }
-const splays = lines(S.splays, { opacity: 0.22 });
+const splays = lines(S.splays, { opacity: 0.5 });   // (faint, but not so faint they can't be found)
 splays.visible = false;
 if (S.surface.length) lines(S.surface, { white: true, opacity: 0.5 });
 
