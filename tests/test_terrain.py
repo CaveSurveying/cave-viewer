@@ -140,3 +140,70 @@ class Scene(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def float_tiff(values, w, h, x0, y0, px):
+    """A single-band float32 GeoTIFF, uncompressed, one strip."""
+    data = struct.pack(f'<{w * h}f', *values)
+    entries = [(256, 4, 1, w), (257, 4, 1, h), (258, 3, 1, 32), (259, 3, 1, 1), (273, 4, 1, 0),
+               (277, 3, 1, 1), (278, 4, 1, h), (279, 4, 1, len(data)), (339, 3, 1, 3),
+               (33550, 12, 3, struct.pack('<3d', px, px, 0)), (33922, 12, 6, struct.pack('<6d', 0, 0, 0, x0, y0, 0))]
+    ifd_at = 8
+    extra_at = ifd_at + 2 + 12 * len(entries) + 4
+    extra, body = b'', b''
+    for tag, typ, n, v in entries:
+        if isinstance(v, bytes):
+            body += struct.pack('<HHII', tag, typ, n, extra_at + len(extra))
+            extra += v
+        elif typ == 3:
+            body += struct.pack('<HHIHH', tag, typ, n, v, 0)
+        else:
+            body += struct.pack('<HHII', tag, typ, n, v)
+    strip_at = extra_at + len(extra)
+    body = body.replace(struct.pack('<HHII', 273, 4, 1, 0), struct.pack('<HHII', 273, 4, 1, strip_at))
+    return b'II*\0' + struct.pack('<I', ifd_at) + struct.pack('<H', len(entries)) + body + b'\0\0\0\0' + extra + data
+
+
+class EAPieces(unittest.TestCase):
+    """A big area from the Environment Agency, a piece at a time (a fake service: no network)."""
+    def setUp(self):
+        import re
+        from caveviewer.terrain import ea
+        self.ea, self.asked = ea, []
+
+        def get(url):
+            e0, e1 = map(int, re.search(r'subset=E\((\d+),(\d+)\)', url).groups())
+            n0, n1 = map(int, re.search(r'subset=N\((\d+),(\d+)\)', url).groups())
+            m = re.search(r'scaleFactor=([\d.]+)', url)
+            px = round(1 / float(m.group(1))) if m else 1
+            w, h = (e1 - e0) // px, (n1 - n0) // px
+            self.asked.append((e1 - e0, n1 - n0, px))
+            # the height at a pixel's middle: 1 cm a metre east, 1 mm a metre north
+            vals = [(e0 + (i + 0.5) * px) * 0.01 + (n1 - (j + 0.5) * px) * 0.001 for j in range(h) for i in range(w)]
+            return float_tiff(vals, w, h, e0, n1, px)
+        self.real, ea.get = ea.get, get
+
+    def tearDown(self):
+        self.ea.get = self.real
+
+    def check(self, e0, n0, e1, n1, step):
+        out = self.ea.fetch(e0, n0, e1, n1, step)
+        w, h = (e1 - e0) // step, (n1 - n0) // step
+        self.assertEqual(len(out), w * h)
+        for i, j in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1), (w // 2, h // 3)):
+            e, n = e0 + (i + 0.5) * step, n1 - (j + 0.5) * step
+            self.assertAlmostEqual(out[j * w + i], e * 0.01 + n * 0.001, places=2, msg=(i, j))
+
+    def test_coarse_sampled_by_the_service(self):
+        self.check(345000, 151000, 349800, 153400, 8)
+        self.assertTrue(all(px == 8 and w <= self.ea.COARSE_PIECE for w, h, px in self.asked))
+        self.assertGreater(len(self.asked), 1)
+
+    def test_fine_averaged_here(self):
+        self.check(345000, 151000, 346400, 151600, 2)
+        self.assertTrue(all(px == 1 and w <= self.ea.PIECE for w, h, px in self.asked))
+        self.assertGreater(len(self.asked), 1)
+
+    def test_small_in_one(self):
+        self.check(345000, 151000, 345600, 151400, 2)
+        self.assertEqual(len(self.asked), 1)

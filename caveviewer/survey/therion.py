@@ -50,7 +50,8 @@ def build(cfg, cave, fetch=True):
     os.makedirs(cfg.work_dir(cave), exist_ok=True)
     out = os.path.relpath(cfg.work_dir(cave), d)
     for svx in sv.get('svx', []):
-        subprocess.run(['cavern', svx], cwd=d, check=True, capture_output=True)
+        # (in the Survex file's own folder, where Therion's import looks for the .3d)
+        subprocess.run(['cavern', os.path.basename(svx)], cwd=os.path.join(d, os.path.dirname(svx)), check=True, capture_output=True)
     common = os.path.exists(os.path.join(reg, 'common_layout.th'))
     cfg_lines = [
         'encoding utf-8',
@@ -72,7 +73,7 @@ def build(cfg, cave, fetch=True):
         f'map-comment "{cave["name"]}: {sv.get("from", "the survey data")}/{sv["dir"]}"',
         'grid bottom', 'grid-size 100 100 100 m', 'grid-coords border',
         'endlayout',
-        *(['input ../common_layout.th'] if common else []),
+        *([f'input {os.path.relpath(os.path.join(reg, "common_layout.th"), d)}'] if common else []),
     ]
     with open(os.path.join(d, CONFIG), 'w') as f:
         f.write('\n'.join(cfg_lines) + '\n')
@@ -127,9 +128,11 @@ def names(cfg, cave):
     legs, stations = read_3d(os.path.join(out, 'cave.3d'))
     named = [(n, p) for n, p, f in stations if n and not f & 1]
     places = {}
-    labels = [(x, y, rec) for x, y, rec in read_points(os.path.join(out, 'esri', 'points2d'))]
-    # and the names written along passages (line labels), at the middle of each
-    labels += [(*pts[len(pts) // 2], rec) for pts, rec in read_lines(os.path.join(out, 'esri', 'lines2d'))]
+    labels = []
+    if cave['names'].get('labels', True):     # (names.labels false: the entrances only, as for a whole catchment)
+        labels = [(x, y, rec) for x, y, rec in read_points(os.path.join(out, 'esri', 'points2d'))]
+        # and the names written along passages (line labels), at the middle of each
+        labels += [(*pts[len(pts) // 2], rec) for pts, rec in read_lines(os.path.join(out, 'esri', 'lines2d'))]
     for x, y, rec in labels:
         if rec.get('_TYPE') != 'label':
             continue
