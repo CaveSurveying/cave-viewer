@@ -2,6 +2,7 @@
 tile by tile: its WFS catalogue gives each tile's GeoTIFF."""
 import array
 import json
+import math
 import sys
 import urllib.parse
 
@@ -36,4 +37,4 @@ def fetch(e0, n0, e1, n1, step):
                 if 0 <= i < w and z > -1000:
                     total[j * w + i] += z
                     count[j * w + i] += 1
-    return array.array('H', (round(t / n * 100) if n else 0 for t, n in zip(total, count)))
+    return array.array('d', (t / n if n else math.nan for t, n in zip(total, count)))

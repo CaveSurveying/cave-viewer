@@ -1,6 +1,7 @@
 """The Environment Agency's 1 m LiDAR composite terrain model (England),
 fetched as one GeoTIFF by WCS."""
 import array
+import math
 import sys
 
 from caveviewer.formats import read_tiff
@@ -18,10 +19,10 @@ def fetch(e0, n0, e1, n1, step):
     tw, th, v, (x0, y0), px = read_tiff(get(WCS.format(e0=e0, e1=e1, n0=n0, n1=n1)))
     if (tw, th, round(x0), round(y0), px) != (e1 - e0, n1 - n0, e0, n1, 1.0):
         raise ValueError(f'unexpected LiDAR grid {tw}x{th} at {x0},{y0} ({px} m)')
-    out = array.array('H')
+    out = array.array('d')
     for j in range(h):
         for i in range(w):
             s = [v[(j * step + b) * tw + i * step + a] for b in range(step) for a in range(step)]
             s = [x for x in s if x > -1000]
-            out.append(round(sum(s) / len(s) * 100) if s else 0)
+            out.append(sum(s) / len(s) if s else math.nan)
     return out

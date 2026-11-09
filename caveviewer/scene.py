@@ -351,8 +351,8 @@ def build(cfg, cave, out_dir, chromium=None):
     e1 = int(math.ceil((max(xs) + SO[0] + margin) / al) * al)
     n0 = int(math.floor((min(ys) + SO[1] - margin) / al) * al)
     n1 = int(math.ceil((max(ys) + SO[1] + margin) / al) * al)
-    tw, th, heights = ground(T['type'], e0, n0, e1, n1, step, cfg.at(T['cache']) if T.get('cache') else None,
-                             level=T.get('level', max(zs) + 10))
+    tw, th, heights, hbase = ground(T['type'], e0, n0, e1, n1, step, cfg.at(T['cache']) if T.get('cache') else None,
+                                   level=T.get('level', max(zs) + 10))
     # the scene's origin: the middle of the ground, in survey coordinates
     ox, oy = (e0 + e1) / 2 - SO[0], (n0 + n1) / 2 - SO[1]
 
@@ -452,7 +452,7 @@ def build(cfg, cave, out_dir, chromium=None):
     ent = where[next(iter(nm['entrances']))]
 
     length = sum(math.dist(a, b) for a, b, f in legs if not f & 7)
-    hs = [v / 100 for v in heights if v]
+    hs = [hbase + v / 100 for v in heights if v]
     off = [k for k, v in cave['features'].items() if not v or k == 'drawn' and cave['drawn']['type'] == 'none']
     scene = {
         'title': cave['name'],
@@ -464,7 +464,8 @@ def build(cfg, cave, out_dir, chromium=None):
         'stats': {'length': round(length), 'depth': round(max(zs) - min(zs)),
                   'top': r(max(zs)), 'bottom': r(min(zs))},
         'terrain': {'file': 'terrain.bin', 'w': tw, 'h': th, 'step': step,
-                    'x0': e0 - SO[0] - ox, 'y0': n1 - SO[1] - oy, 'min': min(hs), 'max': max(hs)},
+                    'x0': e0 - SO[0] - ox, 'y0': n1 - SO[1] - oy, 'min': min(hs), 'max': max(hs),
+                    'base': hbase},
         'merc': merc,
         'walls': {'pos': wall_pos, 'idx': wall_idx},
         'names': names,

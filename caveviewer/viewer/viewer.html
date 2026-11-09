@@ -623,7 +623,8 @@ if (S.surface.length) lines(S.surface, { white: true, opacity: 0.5 });
 const T = S.terrain;
 const TW = T.w, TH = T.h, W = TW * T.step, HH = TH * T.step;
 const hmin = T.min;
-const hAt = (i, j) => { const v = H[j * TW + i]; return v ? v / 100 : hmin; };
+const hbase = T.base || 0;   // (terrain.bin is centimetres above this, 0 where there's no ground)
+const hAt = (i, j) => { const v = H[j * TW + i]; return v ? hbase + v / 100 : hmin; };
 
 // Imagery canvas: a dark base, then Esri tiles drawn in as they arrive
 const M = S.merc;   // survey x, y (from the origin) -> Web Mercator 0..1
