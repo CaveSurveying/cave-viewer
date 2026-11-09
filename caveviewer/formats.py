@@ -72,9 +72,9 @@ def read_3d(path):
             i += (2, 3, 4)[c - 0x11]
         elif c == 0x1f:                 # loop-closure error
             i += 20
-        elif 0x30 <= c <= 0x33:         # passage cross-section (LRUD)
+        elif 0x30 <= c <= 0x33:         # passage cross-section (LRUD): bit 1 is 32-bit values, bit 0 the passage's end
             read_label()
-            i += 16 if c & 1 else 8
+            i += 16 if c & 2 else 8
         elif 0x40 <= c <= 0x7f:         # leg
             if not c & 0x20:
                 read_label()
