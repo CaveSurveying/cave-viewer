@@ -42,6 +42,10 @@ top right), with the cave's own place names on them.
   and on through the cave), **right-drag** to move sideways, and
   **double-click** the cave to look there. **R** spins it; it stops while
   you're handling it.
+- **On a keyboard**: the arrows turn and tilt, **W A S D** move over the
+  ground the way you're facing, **Q** and **E** go down and up, and **+** and
+  **−** zoom. Hold them to keep going, with shift for faster. (With a route
+  open, left and right are its Back and Next.)
 - **Ground** fades the surface from solid to gone. **X-ray over the cave**
   thins it just where the cave is behind it, from wherever you look, so the
   passages show through the fields with the ground still around them.
