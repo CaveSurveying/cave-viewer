@@ -29,9 +29,9 @@ DRAWN_CREDITS = {'therion-svg': "Drawn survey: the same data's drawings, by Ther
 
 # -- names and routes -----------------------------------------------------------------
 
-def main_part(g, dry=False):
-    """The nodes of the largest connected part of the graph (dry: without
-    going through a sump)."""
+def parts(g, dry=False):
+    """The graph's connected parts (dry: without going through a sump), as a
+    list of node lists, largest first."""
     n = len(g['stn'])
     adj = [[] for _ in range(n)]
     e, wet = g['edges'], set(g.get('wet', ()))
@@ -40,7 +40,7 @@ def main_part(g, dry=False):
             continue
         adj[e[k]].append(e[k + 1])
         adj[e[k + 1]].append(e[k])
-    seen, best = [False] * n, []
+    seen, out = [False] * n, []
     for s in range(n):
         if seen[s]:
             continue
@@ -52,9 +52,14 @@ def main_part(g, dry=False):
                 if not seen[j]:
                     seen[j] = True
                     todo.append(j)
-        if len(part) > len(best):
-            best = part
-    return best
+        out.append(part)
+    return sorted(out, key=len, reverse=True)
+
+
+def main_part(g, dry=False):
+    """The nodes of the largest connected part of the graph (dry: without
+    going through a sump)."""
+    return parts(g, dry)[0]
 
 PLACE_R, PLACE_DZ = 25, 15     # metres: how near a place a station takes its name
 AVOID = 20                      # names.json's avoid: a leg to or from one of its stations counts as this many times as far
@@ -419,7 +424,22 @@ def build(cfg, cave, out_dir, chromium=None):
     # the sumps: each is a place at its dry end (where it meets the dry cave
     # nearest its middle), and places only beyond a sump aren't places to go
     gpos = lambda i: g['pos'][3 * i:3 * i + 3]
-    dry, wet = set(main_part(g, dry=True)), set(g['wet'])
+    # the cave's systems: its connected parts (a whole area's data has many, joined only by
+    # surface surveys). Each entrance belongs to the one it's nearest, and routes go within it.
+    where = {n: p for n, p, f in stations}
+    part_of = {}
+    for k, part in enumerate(parts(g)):
+        for i in part:
+            part_of[i] = k
+    snapped = {}                    # entrance station -> its nearest node
+    for k in nm.get('entrances', {}):
+        if k in where:
+            p = rel(where[k])
+            snapped[k] = min(range(len(g['stn'])), key=lambda i: math.dist(gpos(i), p))
+    # places to go: the dry parts an entrance joins (a part beyond a sump isn't one)
+    doors = {i for k, i in snapped.items() if math.dist(gpos(i), rel(where[k])) <= R['snap']}
+    dry = {i for part in parts(g, dry=True) if doors.intersection(part) for i in part}
+    wet = set(g['wet'])
     edges = g['edges']
     ends = {i for k in range(0, len(edges), 2) for i, j in ((edges[k], edges[k + 1]), (edges[k + 1], edges[k]))
             if i in wet and j in dry and j not in wet}
@@ -431,20 +451,22 @@ def build(cfg, cave, out_dir, chromium=None):
             n['p'] = gpos(min(near, key=lambda j: math.dist(gpos(j), n['p'])))
         elif i not in dry:
             n['apart'] = True
+        if not n.get('apart'):
+            n['sys'] = part_of[i]
     # the entrances, in the order in names.json; those that join the
-    # surveyed cave (in its largest connected part) can be routed to
-    where = {n: p for n, p, f in stations}
-    main = main_part(g)
+    # surveyed cave (any of its systems) can be routed to, within their system
     ents = []
     for k, t in nm.get('entrances', {}).items():
         if k not in where:
             print(f'no station {k!r} for the entrance {t!r}', file=sys.stderr)
             continue
         p = rel(where[k])
-        i = min(main, key=lambda i: math.dist(gpos(i), p))
+        i = snapped[k]
         e = {'t': t, 'p': p, 'entrance': True}
         if math.dist(gpos(i), p) > R['snap'] or t in nm.get('apart', ()):     # (too far from the cave, or kept out of the routes by name)
             e['apart'] = True
+        else:
+            e['sys'] = part_of[i]
         ents.append(e)
     names = ents + names
     if not nm.get('entrances'):

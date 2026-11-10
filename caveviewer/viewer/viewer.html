@@ -158,18 +158,33 @@
   #route .x.ico { width: 30px; height: 26px; display: grid; place-items: center; border-radius: 8px; }
   #route .x.ico svg { width: 15px; height: 15px; }
   .row label small { color: var(--muted); font-size: 11px; }
-  #route .pick { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px 8px; align-items: center; }
-  #route .pick label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-  #route .pick label span { width: 30px; }
+  /* minmax(0, 1fr): a long entrance name mustn't widen the column past the panel */
+  #route .pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 6px 8px; align-items: center; }
+  #route .pick label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
+  #route .pick label span { width: 30px; flex: none; }
   #route .pick .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   #route .pick .trip { grid-column: 1 / 3; }
   body.route-step #r-prof { display: none; }      /* the height graph is for the whole route: a step leaves more room for the cave */
   /* a cave whose route text is turned off: the route, its height and Back and Next, with more room for the cave */
   body.no-directions #r-d, body.no-directions #r-steps, body.no-directions #route #r-print { display: none !important; }
   #route .pick .trip[hidden] { display: none; }     /* (a cave with no trips: the label's display: flex would show it) */
-  #route select { flex: 1; min-width: 0; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .12);
+  #route select { flex: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .12);
     border-radius: 8px; padding: 5px 6px; font: inherit; font-size: 13px; }
   #route select option { background: #141a26; }
+  /* From and To: type to search; the list shows the matches, To only those joined to From */
+  #route .combo { position: relative; flex: 1; min-width: 0; }
+  #route .combo input { width: 100%; box-sizing: border-box; min-width: 0; text-overflow: ellipsis; background: rgba(255, 255, 255, .07); color: var(--text);
+    border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 13px; }
+  #route .combo input:focus { outline: none; border-color: rgba(120, 170, 255, .7); background: rgba(255, 255, 255, .1); }
+  /* (fixed, in the page's body, placed by the script: the panel scrolls and moves on a phone,
+     and would cut it off or carry it with it) */
+  .opts { position: fixed; z-index: 50; overflow-y: auto; box-sizing: border-box;
+    background: #141a26; border: 1px solid rgba(255, 255, 255, .14); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); padding: 4px 0; }
+  .opts[hidden] { display: none; }
+  .opts .grp { padding: 6px 10px 2px; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .opts .opt { padding: 5px 10px; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opts .opt.on { background: rgba(120, 170, 255, .22); }
+  .opts .none { padding: 6px 10px; font-size: 12px; color: var(--muted); }
   #r-swap { grid-row: 1 / 3; grid-column: 2; width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .07);
     border: 1px solid rgba(255, 255, 255, .12); color: var(--text); cursor: pointer; font-size: 15px; }
   #r-swap:hover { background: rgba(255, 255, 255, .15); }
@@ -183,6 +198,9 @@
   #r-card .turn #r-jn { width: 96px; height: 96px; transition: none; }
   #r-card .turn svg[hidden] { display: none; }
   #r-card { touch-action: pan-y; }
+  /* the words beside the arrow: as wide as the card leaves, and a long station name
+     (nc3-threecountiesandnorthwest.easegill.…) wraps rather than widening it */
+  #r-card > div:last-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   #r-card .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   #r-card .d { font-size: 14px; font-weight: 500; margin: 2px 0 3px; }
   #r-card .m { font-size: 11px; color: var(--muted); }
@@ -191,7 +209,7 @@
   #route .nav .btn { padding: 8px 0; font-weight: 600; }
   #route .nav .btn:disabled { opacity: .35; cursor: default; }
   #r-steps { list-style: none; margin: 0; padding: 0 2px 0 0; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 60px; }
-  #r-steps li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padding: 6px 6px; border-radius: 8px; cursor: pointer; font-size: 12.5px; }
+  #r-steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; overflow-wrap: anywhere; gap: 8px; padding: 6px 6px; border-radius: 8px; cursor: pointer; font-size: 12.5px; }
   #r-steps li:hover { background: rgba(255, 255, 255, .06); }
   #r-steps li.h { display: block; cursor: default; padding: 8px 6px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #ffd27a; }
   #r-steps li.h:hover { background: none; }
@@ -235,7 +253,7 @@
     #print .maps svg { width: 100%; height: auto; border: .5pt solid #bbb; }
     #print .passages { font-size: 8.5pt; color: #333; margin: 0 0 8pt; }
     #print .steps { display: flex; flex-wrap: wrap; gap: 5pt 10pt; }   /* (flex rather than grid: it breaks across pages) */
-    #print .st { width: calc(50% - 5pt); display: grid; grid-template-columns: 26mm 1fr; gap: 6pt; break-inside: avoid; border-top: .5pt solid #ccc; padding-top: 4pt; }
+    #print .st { width: calc(50% - 5pt); display: grid; grid-template-columns: 26mm minmax(0, 1fr); overflow-wrap: anywhere; gap: 6pt; break-inside: avoid; border-top: .5pt solid #ccc; padding-top: 4pt; }
     #print .st svg { width: 26mm; height: 26mm; background: #f4f4f2; border-radius: 3pt; }
     #print .st .h { font-size: 8pt; color: #555; }
     #print .st .t { font-weight: 600; font-size: 9.5pt; margin: 1pt 0; }
@@ -341,9 +359,9 @@
   <div class="grab" id="r-grab" role="button" tabindex="0" aria-label="Pull up for more of the route, or down for less"><span></span></div>
   <div class="rhead"><h2 id="r-head" title="Show or hide the route details"><span class="full">Route</span><span class="ends" id="r-ends"></span></h2><span class="rbtns"><button class="x ico" id="r-print" title="Print this route as a card" aria-label="Print the route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg></button><button class="x" id="r-close" title="Close the route" aria-label="Close the route">&times;</button></span></div>
   <div class="pick">
-    <label><span class="dot" style="background:#4fd18b"></span><span>From</span><select id="r-from"></select></label>
+    <label><span class="dot" style="background:#4fd18b"></span><span>From</span><div class="combo"><input id="r-from" autocomplete="off" spellcheck="false" aria-label="From" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-from-opts" role="listbox" hidden></div></div></label>
     <button id="r-swap" title="Swap" aria-label="Swap the ends">&#8645;</button>
-    <label><span class="dot" style="background:#ff6b6b"></span><span>To</span><select id="r-to"></select></label>
+    <label><span class="dot" style="background:#ff6b6b"></span><span>To</span><div class="combo"><input id="r-to" autocomplete="off" spellcheck="false" aria-label="To" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-to-opts" role="listbox" hidden></div></div></label>
     <label class="trip" id="r-trip-row" hidden><span class="dot" style="background:#ffd27a"></span><span>Trip</span><select id="r-trip"></select></label>
   </div>
   <div class="chips" id="r-stats"></div>
@@ -689,6 +707,126 @@ const groundMat = new THREE.ShaderMaterial({
 
 let ground, groundDepth;
 const surface = [];   // the ground, its block's sides and the grid under it
+
+// The ground in tiles, each drawn only as finely as it shows on screen: a whole
+// area's ground is millions of triangles (the Three Counties System's, 7.8
+// million, drawn twice a frame), most of them far off and smaller than a pixel.
+// The tiles share one set of vertices; each is drawn at every 1st, 2nd, 4th …
+// sample, the coarsest that keeps its cells under GROUND_PX pixels, and where a
+// tile meets a coarser one a short skirt hangs from their edge to hide the gap.
+const TILE = 128, LEVELS = [1, 2, 4, 8, 16, 32], GROUND_PX = 6, SKIRT = 12;
+let groundLOD = () => {};
+function groundTiles(pos, uv, alt) {
+  // normals from the heights (no triangles needed): east, up, south
+  const nrm = new Float32Array(TW * TH * 3), st = T.step;
+  for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++) {
+    const k = j * TW + i, y = c => pos[3 * c + 1];
+    const dx = (y(j * TW + Math.min(i + 1, TW - 1)) - y(j * TW + Math.max(i - 1, 0))) / (st * (Math.min(i + 1, TW - 1) - Math.max(i - 1, 0)));
+    const dz = (y(Math.min(j + 1, TH - 1) * TW + i) - y(Math.max(j - 1, 0) * TW + i)) / (st * (Math.min(j + 1, TH - 1) - Math.max(j - 1, 0)));
+    const l = Math.hypot(dx, 1, dz);
+    nrm[3 * k] = -dx / l; nrm[3 * k + 1] = 1 / l; nrm[3 * k + 2] = -dz / l;
+  }
+  // the skirts' vertices: every sample on a line between tiles, again, SKIRT metres lower
+  const NX = Math.ceil((TW - 1) / TILE), NY = Math.ceil((TH - 1) / TILE);
+  const skirtOf = new Map(), extra = [];
+  const skirt = k => { let v = skirtOf.get(k); if (v === undefined) { v = TW * TH + extra.length; skirtOf.set(k, v); extra.push(k); } return v; };
+  for (let a = 1; a < NX; a++) for (let j = 0; j < TH; j++) skirt(j * TW + a * TILE);
+  for (let b = 1; b < NY; b++) for (let i = 0; i < TW; i++) skirt(b * TILE * TW + i);
+  const N = TW * TH + extra.length;
+  const P3 = new Float32Array(N * 3), U2 = new Float32Array(N * 2), A1 = new Float32Array(N), N3 = new Float32Array(N * 3);
+  P3.set(pos); U2.set(uv); A1.set(alt); N3.set(nrm);
+  extra.forEach((k, e) => {
+    const v = TW * TH + e;
+    P3[3 * v] = pos[3 * k]; P3[3 * v + 1] = pos[3 * k + 1] - SKIRT; P3[3 * v + 2] = pos[3 * k + 2];
+    U2[2 * v] = uv[2 * k]; U2[2 * v + 1] = uv[2 * k + 1]; A1[v] = alt[k];
+    N3[3 * v] = nrm[3 * k]; N3[3 * v + 1] = nrm[3 * k + 1]; N3[3 * v + 2] = nrm[3 * k + 2];
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(P3, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(U2, 2));
+  g.setAttribute('alt', new THREE.BufferAttribute(A1, 1));
+  g.setAttribute('normal', new THREE.BufferAttribute(N3, 3));
+  g.boundingBox = new THREE.Box3().setFromBufferAttribute(g.attributes.position);
+  g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
+
+  // the tiles: their samples (i0..i1, j0..j1, edges shared) and their box
+  const tiles = [];
+  for (let b = 0; b < NY; b++) for (let a = 0; a < NX; a++) {
+    const i0 = a * TILE, j0 = b * TILE, i1 = Math.min(i0 + TILE, TW - 1), j1 = Math.min(j0 + TILE, TH - 1);
+    let lo = Infinity, hi = -Infinity;
+    for (let j = j0; j <= j1; j += 4) for (let i = i0; i <= i1; i += 4) { const y = pos[3 * (j * TW + i) + 1]; if (y < lo) lo = y; if (y > hi) hi = y; }
+    tiles.push({ a, b, i0, j0, i1, j1, lo, hi, x0: pos[3 * (j0 * TW + i0)], x1: pos[3 * (j0 * TW + i1)],
+                 z0: pos[3 * (j0 * TW + i0) + 2], z1: pos[3 * (j1 * TW + i0) + 2], level: -1 });
+  }
+  const at = (a, b) => (a >= 0 && b >= 0 && a < NX && b < NY) ? tiles[b * NX + a] : null;
+  // a tile's triangles at a step: its cells, and a skirt on each side its neighbour is coarser
+  const cache = new Map();   // (the coarse levels, kept: they're small)
+  function cells(t, s) {
+    const key = `${t.a},${t.b},${s}`;
+    if (cache.has(key)) return cache.get(key);
+    const is = [], js = [];
+    for (let i = t.i0; i < t.i1; i += s) is.push(i); is.push(t.i1);
+    for (let j = t.j0; j < t.j1; j += s) js.push(j); js.push(t.j1);
+    const out = new Uint32Array((is.length - 1) * (js.length - 1) * 6);
+    let p = 0;
+    for (let y = 0; y < js.length - 1; y++) for (let x = 0; x < is.length - 1; x++) {
+      const a = js[y] * TW + is[x], b = js[y] * TW + is[x + 1], c = js[y + 1] * TW + is[x], d = js[y + 1] * TW + is[x + 1];
+      out[p++] = a; out[p++] = c; out[p++] = b; out[p++] = b; out[p++] = c; out[p++] = d;
+    }
+    if (s >= 4) cache.set(key, out);
+    return out;
+  }
+  function skirts(t, s) {
+    const out = [];
+    const edge = (ks) => { for (let n = 0; n < ks.length - 1; n++) {
+      const p = ks[n], q = ks[n + 1], sp = skirtOf.get(p), sq = skirtOf.get(q);
+      if (sp === undefined || sq === undefined) continue;
+      out.push(p, sp, q, q, sp, sq);
+    } };
+    const line = (fixed, from, to, horiz) => { const ks = []; for (let v = from; v < to; v += s) ks.push(horiz ? fixed * TW + v : v * TW + fixed); ks.push(horiz ? fixed * TW + to : to * TW + fixed); return ks; };
+    for (const [n, side] of [[at(t.a - 1, t.b), 'w'], [at(t.a + 1, t.b), 'e'], [at(t.a, t.b - 1), 'n'], [at(t.a, t.b + 1), 's']]) {
+      if (!n || n.level <= t.level) continue;           // (only toward a coarser neighbour: its edge skips samples of ours)
+      if (side === 'w') edge(line(t.i0, t.j0, t.j1, false));
+      if (side === 'e') edge(line(t.i1, t.j0, t.j1, false));
+      if (side === 'n') edge(line(t.j0, t.i0, t.i1, true));
+      if (side === 's') edge(line(t.j1, t.i0, t.i1, true));
+    }
+    return out;
+  }
+  const local = new THREE.Vector3();
+  let built = '';
+  groundLOD = () => {
+    if (!ground || !ground.visible) return;
+    ground.updateWorldMatrix(true, false);
+    local.copy(camera.position); ground.worldToLocal(local);
+    const sy = world.scale.y, f = innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    for (const t of tiles) {
+      const dx = Math.max(t.x0 - local.x, 0, local.x - t.x1), dz = Math.max(t.z0 - local.z, 0, local.z - t.z1);
+      const dy = Math.max(t.lo - local.y, 0, local.y - t.hi) * sy;
+      const d = Math.max(Math.hypot(dx, dy, dz), 1);
+      // the coarsest step whose cells stay under GROUND_PX pixels at that distance
+      let level = 0;
+      while (level < LEVELS.length - 1 && LEVELS[level + 1] * st / d * f <= GROUND_PX) level++;
+      t.level = level;
+    }
+    if (build()) invalidate();
+  };
+  function build() {
+    const key = tiles.map(t => t.level).join('');
+    if (key === built) return false;
+    built = key;
+    const parts = tiles.map(t => [cells(t, LEVELS[t.level]), skirts(t, LEVELS[t.level])]);
+    const total = parts.reduce((n, [c, k]) => n + c.length + k.length, 0);
+    const idx = new Uint32Array(total);
+    let p = 0;
+    for (const [c, k] of parts) { idx.set(c, p); p += c.length; idx.set(k, p); p += k.length; }
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    return true;
+  }
+  for (const t of tiles) t.level = 2;      // (to start with, before the camera's anywhere)
+  build();
+  return g;
+}
 {
   const n = TW * TH;
   const pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), alt = new Float32Array(n);
@@ -704,18 +842,7 @@ const surface = [];   // the ground, its block's sides and the grid under it
       alt[k] = h;
     }
   }
-  const idx = new Uint32Array((TW - 1) * (TH - 1) * 6);
-  let p = 0;
-  for (let j = 0; j < TH - 1; j++) for (let i = 0; i < TW - 1; i++) {
-    const a = j * TW + i, b = a + 1, c = a + TW, d = c + 1;
-    idx[p++] = a; idx[p++] = c; idx[p++] = b; idx[p++] = b; idx[p++] = c; idx[p++] = d;
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  g.setAttribute('alt', new THREE.BufferAttribute(alt, 1));
-  g.setIndex(new THREE.BufferAttribute(idx, 1));
-  g.computeVertexNormals();
+  const g = groundTiles(pos, uv, alt);
   ground = new THREE.Mesh(g, groundMat);
   surface.push(ground);
   ground.renderOrder = 2;
@@ -816,7 +943,7 @@ const names = S.names.map(n => {
   el.className = 'lbl' + (n.entrance ? ' ent' : '');
   el.textContent = n.t;
   labelBox.appendChild(el);
-  return { el, p: n.p, entrance: !!n.entrance, w: 0 };
+  return { el, t: n.t, p: n.p, entrance: !!n.entrance, w: 0 };
 });
 
 // X-ray: each frame the cave alone is drawn in white into a small target
@@ -2188,12 +2315,21 @@ for (let k = 0; k < G.edges.length; k += 2) {
   const a = G.edges[k], b = G.edges[k + 1], d = dist3(gp(a), gp(b));
   adj[a].set(b, d); adj[b].set(a, d);
 }
+// the cave's systems: its connected parts (a whole area's data has many, joined only over
+// the surface). Routes stay underground, so To is chosen from those joined to From.
+const COMP = new Int32Array(GN).fill(-1);
+for (let s = 0, k = 0; s < GN; s++) {
+  if (COMP[s] >= 0) continue;
+  const todo = [s]; COMP[s] = k;
+  while (todo.length) for (const v of adj[todo.pop()].keys()) if (COMP[v] < 0) { COMP[v] = k; todo.push(v); }
+  k++;
+}
 const passageOf = i => G.passage[i] >= 0 ? G.passages[G.passage[i]] : null;
 const nearestNode = p => { let best = 0, bd = Infinity; for (let i = 0; i < GN; i++) { const d = dist3(p, gp(i)); if (d < bd) { bd = d; best = i; } } return best; };
 // every name is a place to go, except entrances that don't join the surveyed cave;
 // the entrances first, in the order the scene has them
 const ENTS = S.names.filter(n => n.entrance && !n.apart).map(n => n.t);
-const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: nearestNode(n.at || n.p) }))
+const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: nearestNode(n.at || n.p), sys: n.sys }))
   .sort((a, b) => ((ENTS.indexOf(a.name) + 1 || 99) - (ENTS.indexOf(b.name) + 1 || 99)) || a.name.localeCompare(b.name));
 
 const HERE = new Map();          // 'Here (stn …)' -> station
@@ -2580,9 +2716,8 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   routeFrom = fromName; routeTo = toName; routeVia = via;
   const trip = TRIPS.find(t => t.from === fromName && t.to === toName && t.via.join('|') === via.join('|'));
   $('r-trip').value = trip ? trip.name : '';
-  for (const [sel, n] of [['r-from', fromName], ['r-to', toName]])
-    if (HERE.has(n) && ![...$(sel).options].some(o => o.value === n)) $(sel).insertAdjacentHTML('afterbegin', `<option>${escHtml(n)}</option>`);
   $('r-from').value = fromName; $('r-to').value = toName;
+  $('r-from').title = fromName; $('r-to').title = toName;     // the whole name, where the field cuts it short
   $('r-ends').textContent = trip ? trip.name : `${fromName} \u2192 ${toName}`;
   let path = [a.node];
   for (const s of [...stops, b]) {
@@ -2595,7 +2730,11 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   $('r-none')?.remove();
   if (!path) {
     route = null; routeGroup.visible = false;
-    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Pick two different places.' : 'No way through the survey between these.'}</span>`;
+    // (a whole area's data is many systems, joined only over the surface: routes stay underground)
+    const apart = COMP[a.node] !== COMP[b.node];
+    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Pick two different places.'
+      : apart ? `${escHtml(fromName)} and ${escHtml(toName)} aren't joined underground in the survey.`
+      : 'No way through the survey between these.'}</span>`;
     return;
   }
   route = new Route(path);
@@ -2857,8 +2996,81 @@ $('r-prof').addEventListener('click', e => {
 });
 
 // -- routes: the panel ---------------------------------------------------------------------
-const opts = PLACES.map(p => `<option>${p.name}</option>`).join('');
-$('r-from').innerHTML = opts; $('r-to').innerHTML = opts;
+// From and To: a box to type in, with the matching places below it (anywhere in the name),
+// entrances first, then the other places, each A to Z. To lists only the places joined to
+// From underground; picking a From in another system moves To to one of its entrances.
+const ENTSET = new Set(ENTS);
+const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+function choices(which) {
+  const from = placeBy(routeFrom);
+  let list = PLACES.map(p => p.name);
+  if (which === 'to' && from) list = PLACES.filter(p => COMP[p.node] === COMP[from.node] && p.name !== routeFrom).map(p => p.name);
+  const here = [...HERE.keys()].filter(n => n === (which === 'to' ? routeTo : routeFrom));
+  return [['Where you are', here], ['Entrances', list.filter(n => ENTSET.has(n)).sort(byName)],
+          ['Places', list.filter(n => !ENTSET.has(n)).sort(byName)]];
+}
+function defaultTo(from) {
+  const f = placeBy(from), to = placeBy(routeTo);
+  if (!f || (to && COMP[to.node] === COMP[f.node] && routeTo !== from)) return routeTo;
+  const same = PLACES.filter(p => COMP[p.node] === COMP[f.node] && p.name !== from);
+  return (same.find(p => ENTSET.has(p.name)) || same[0] || { name: routeTo }).name;
+}
+function combo(which, onPick) {
+  const input = $(`r-${which}`), box = $(`r-${which}-opts`);
+  document.body.appendChild(box);         // (out of the panel: see .opts)
+  let shown = [], on = -1;
+  const committed = () => which === 'to' ? routeTo : routeFrom;
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const match = n => { const l = n.toLowerCase(); return words.every(w => l.includes(w)); };
+    // (the field shows the current choice: until it's edited, list everything)
+    const all = input.dataset.typed !== '1';
+    shown = []; let html = '';
+    for (const [title, names] of choices(which)) {
+      const hits = all ? names : names.filter(match);
+      if (!hits.length) continue;
+      html += `<div class="grp">${title}</div>`;
+      for (const n of hits) html += `<div class="opt" role="option" data-k="${shown.push(n) - 1}">${escHtml(n)}</div>`;
+    }
+    if (!shown.length) html = `<div class="none">${which === 'to' && routeFrom ? `Nothing joined to ${escHtml(routeFrom)} by that name` : 'No place by that name'}</div>`;
+    box.innerHTML = html;
+    on = all ? shown.indexOf(committed()) : (shown.length ? 0 : -1);
+    mark(true);
+  }
+  function mark(scroll) {
+    box.querySelectorAll('.opt').forEach(el => el.classList.toggle('on', +el.dataset.k === on));
+    if (scroll && on >= 0) box.querySelector(`.opt[data-k="${on}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+  function place() {                                      // below the field where there's room, else above it
+    const r = input.getBoundingClientRect(), below = innerHeight - r.bottom - 8, above = r.top - 8;
+    const down = below >= Math.min(240, above);
+    Object.assign(box.style, { left: `${r.left}px`, width: `${r.width}px`, maxHeight: `${Math.min(320, down ? below : above)}px`,
+      top: down ? `${r.bottom + 4}px` : '', bottom: down ? '' : `${innerHeight - r.top + 4}px` });
+  }
+  function open() { input.dataset.typed = ''; render(); place(); box.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+  function close() { box.hidden = true; input.setAttribute('aria-expanded', 'false'); input.value = committed() || ''; input.dataset.typed = ''; }
+  function pick(k) { const n = shown[k]; close(); if (n != null && n !== committed()) onPick(n); input.blur(); }
+  input.addEventListener('focus', () => { open(); input.select(); });
+  input.addEventListener('input', () => { input.dataset.typed = '1'; render(); place(); box.hidden = false; });
+  addEventListener('resize', () => { if (!box.hidden) place(); });
+  $('route').addEventListener('scroll', () => { if (!box.hidden) place(); });
+  input.addEventListener('blur', () => setTimeout(close, 120));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (box.hidden) open();
+      on = Math.max(0, Math.min(shown.length - 1, on + (e.key === 'ArrowDown' ? 1 : -1))); mark(true);
+    } else if (e.key === 'Enter') { e.preventDefault(); if (on >= 0) pick(on); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); input.blur(); }
+  });
+  box.addEventListener('pointerdown', e => {               // (pointerdown: before the input loses focus)
+    const el = e.target.closest('.opt');
+    if (el) { e.preventDefault(); pick(+el.dataset.k); }
+  });
+  box.addEventListener('click', e => e.preventDefault());   // (inside the label: don't focus the field again)
+  box.addEventListener('pointermove', e => { const el = e.target.closest('.opt'); if (el && +el.dataset.k !== on) { on = +el.dataset.k; mark(false); } });
+}
 // the cave's trips (names.json): ready-made routes through places in turn
 const TRIPS = (S.trips || []).map(t => ({ name: t.name, from: t.via[0], to: t.via[t.via.length - 1], via: t.via.slice(1, -1) }))
   .filter(t => [t.from, t.to, ...t.via].every(placeBy));
@@ -2932,8 +3144,8 @@ $('r-close').onclick = closeRoute;
   sheetTo = st => { if (state() === 'peek' || st === 'full' || st === 'peek') setSheet(st); };
   $('r-grab').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(state() === 'peek' ? 'half' : 'peek'); } });
 }
-$('r-from').onchange = () => openRoute($('r-from').value, $('r-to').value);
-$('r-to').onchange = () => openRoute($('r-from').value, $('r-to').value);
+combo('from', n => openRoute(n, defaultTo(n)));
+combo('to', n => openRoute(routeFrom, n));
 $('r-swap').onclick = () => openRoute(routeTo, routeFrom, 0, true, routeVia.slice().reverse());
 $('r-prev').onclick = () => goStep(cur - 1);
 $('r-next').onclick = () => goStep(cur + 1);
@@ -3254,6 +3466,7 @@ $('r-print').onclick = () => { buildPrint(); print(); };
 const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const v = new THREE.Vector3();
 const needle = $('needle');
+const ends = n => (route && (n.t === routeFrom || n.t === routeTo)) ? 1 : 0;
 function placeLabels() {
   if (labelBox.style.display === 'none') return;
   const taken = [];
@@ -3262,17 +3475,23 @@ function placeLabels() {
     const d = v.distanceTo(camera.position);
     v.project(camera);
     return { n, x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight, d, front: v.z < 1 };
-  }).sort((a, b) => (b.n.entrance - a.n.entrance) || a.d - b.d);
+  }).sort((a, b) => (ends(b.n) - ends(a.n)) || (b.n.entrance - a.n.entrance) || a.d - b.d);
   for (const o of order) {
     const { n } = o;
     if (!n.w) n.w = n.el.offsetWidth || 80;
     let show = o.front && o.x > -50 && o.x < innerWidth + 50 && o.y > -20 && o.y < innerHeight + 20;
     const box = [o.x - n.w / 2 - 4, o.y - 34, o.x + n.w / 2 + 4, o.y - 10];
-    if (show && !n.entrance) show = !taken.some(t => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1]);
+    // the nearest first: one that would cover a nearer one waits until there's room
+    // (a whole area's entrances pile up otherwise), except a route's two ends
+    if (show && !ends(n)) show = !taken.some(t => box[0] < t[2] && box[2] > t[0] && box[1] < t[3] && box[3] > t[1]);
     if (show) taken.push(box);
-    const dim = route && !n.entrance && !onRoute.has(n.el.textContent) ? 0.4 : 1;   // a route's own passages stand out
-    n.el.style.opacity = show ? (n.entrance ? 1 : dim * Math.max(0.35, Math.min(1, 1600 / o.d))) : 0;
-    n.el.style.transform = `translate(${(o.x - n.w / 2).toFixed(1)}px, ${(o.y - 34).toFixed(1)}px)`;
+    const dim = route && !n.entrance && !onRoute.has(n.t) ? 0.4 : 1;   // a route's own passages stand out
+    const opacity = show ? (n.entrance ? '1' : (dim * Math.max(0.35, Math.min(1, 1600 / o.d))).toFixed(2)) : '0';
+    if (opacity !== n.op) { n.op = opacity; n.el.style.opacity = opacity; }
+    if (show) {      // (a hidden one isn't moved: two style writes fewer, for most of them)
+      const tr = `translate(${(o.x - n.w / 2).toFixed(1)}px, ${(o.y - 34).toFixed(1)}px)`;
+      if (tr !== n.tr) { n.tr = tr; n.el.style.transform = tr; }
+    }
   }
 }
 // While a route is open its panel covers part of the screen (the right on a
@@ -3328,6 +3547,7 @@ function frame() {
   compassFrame();
   // north on screen: facing east (azimuth -90 degrees) it is to the left
   needle.setAttribute('transform', `rotate(${(controls.getAzimuthalAngle() * 180 / Math.PI).toFixed(1)} 23 23)`);
+  groundLOD();
   renderMask();
   renderer.render(scene, camera);
   placeLabels();

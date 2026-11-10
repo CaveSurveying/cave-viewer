@@ -45,7 +45,11 @@ def default_entrances(cave, stations):
         for d in range(top, len(p) - 1):
             kids = {q[d + 1] for q in paths if q[:d + 1] == p[:d + 1] and len(q) > d + 2}
             if len(kids) < 3 and not GENERIC.match(p[d]):
-                return p[d]
+                # (a survey in it named for the entrance names it better: kmc.valleyentrance.0,
+                # unless it only repeats the cave's name: hammerpot.hammerentrance)
+                door = [c for k, c in enumerate(p[:-1]) if k > d and ENTRANCE.match(c) and says(c)
+                        and not any(a.lower().startswith(re.sub(r'[_-]?entrance$', '', c.lower())) for a in p[d:k])]
+                return door[-1] if door else p[d]
         if says(p[-1]):                                 # (a station named for its cave: bradagarthpot)
             return p[-1]
         named = [c for c in p[top:-1] if not GENERIC.match(c)] or [c for c in p[:-1] if not c.isdigit()]
@@ -76,10 +80,12 @@ def says(station):
 # survey and station names that say nothing of where they are: numbers, "entrance",
 # the survey files' own words (master, area, surface, nosplays)
 GENERIC = re.compile(r'^(\d+\w{0,2}|[a-z]?\d+[a-z]?|ents?\d*|entrance\d*|main|master|surface\w*|fixed_points|'
-                     r'.*[_-](master|area|nosurface|nosplays)\w*)$', re.I)
+                     r'.*[_-](master|area|nosurface|nosplays)\w*|.*[_-]surface([_-]survey)?)$', re.I)   # (yeadon_pipikin_surface_survey)
+# a survey named for an entrance (valleyentrance, upper_entrance): not just "entrance"
+ENTRANCE = re.compile(r'^.+[a-z_-]entrance$', re.I)
 # words cave names run together ("lancasterhole", "greatdoukpot"), split where they end or begin one
 _ENDS = ('swallet', 'cavern', 'caves', 'cave', 'pot', 'hole', 'holes', 'mine', 'sinks', 'sink', 'shaft', 'rift',
-         'chamber', 'passage', 'inlet', 'dig', 'series', 'head', 'rising', 'level', 'sough', 'adit')
+         'chamber', 'passage', 'inlet', 'dig', 'series', 'head', 'rising', 'level', 'sough', 'adit', 'entrance')
 _STARTS = ('great', 'little', 'high', 'low', 'upper', 'lower', 'top', 'old', 'new', 'big')
 
 

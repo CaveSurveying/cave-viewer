@@ -11,7 +11,7 @@ const DRAWN = '__ID__-drawn';      // the drawn survey, where there is one: kept
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(APP);
-    await c.addAll(FILES);
+    await c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })));   // (not the browser's cached copies: the last build's)
     await self.skipWaiting();
   })());
 });
