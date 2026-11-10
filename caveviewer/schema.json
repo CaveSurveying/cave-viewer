@@ -82,7 +82,8 @@
           "type": "object",
           "properties": {
             "labels": {"type": "boolean", "default": true, "description": "For a Therion survey, the drawing's labels become place names. false: the entrances (and the config's places) only, as for a whole catchment."},
-            "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."}
+            "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."},
+            "entrances": {"type": "object", "additionalProperties": {"$ref": "#/$defs/place"}, "description": "Entrance station -> name, over the entrances found (the survey's flags, or entrances): renaming one, or adding one the survey doesn't flag. Unlike entrances, it keeps the rest."}
           }
         },
         "entrances": {"type": "object", "additionalProperties": {"$ref": "#/$defs/place"}, "description": "Entrance station -> name, in order (the first is the page's grid reference). Default: the stations the survey flags as entrances."},
