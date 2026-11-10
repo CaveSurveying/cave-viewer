@@ -712,9 +712,10 @@ const surface = [];   // the ground, its block's sides and the grid under it
 // area's ground is millions of triangles (the Three Counties System's, 7.8
 // million, drawn twice a frame), most of them far off and smaller than a pixel.
 // The tiles share one set of vertices; each is drawn at every 1st, 2nd, 4th …
-// sample, the coarsest that keeps its cells under GROUND_PX pixels, and where a
-// tile meets a coarser one a short skirt hangs from their edge to hide the gap.
-const TILE = 128, LEVELS = [1, 2, 4, 8, 16, 32], GROUND_PX = 6, SKIRT = 12;
+// sample, the coarsest that keeps its cells under GROUND_PX pixels. Where a tile
+// meets a coarser one, its edge triangles meet only the coarser one's samples, so
+// the two share an edge and there's no gap between them.
+const TILE = 128, LEVELS = [1, 2, 4, 8, 16, 32], GROUND_PX = 4;
 let groundLOD = () => {};
 function groundTiles(pos, uv, alt) {
   // normals from the heights (no triangles needed): east, up, south
@@ -726,26 +727,12 @@ function groundTiles(pos, uv, alt) {
     const l = Math.hypot(dx, 1, dz);
     nrm[3 * k] = -dx / l; nrm[3 * k + 1] = 1 / l; nrm[3 * k + 2] = -dz / l;
   }
-  // the skirts' vertices: every sample on a line between tiles, again, SKIRT metres lower
   const NX = Math.ceil((TW - 1) / TILE), NY = Math.ceil((TH - 1) / TILE);
-  const skirtOf = new Map(), extra = [];
-  const skirt = k => { let v = skirtOf.get(k); if (v === undefined) { v = TW * TH + extra.length; skirtOf.set(k, v); extra.push(k); } return v; };
-  for (let a = 1; a < NX; a++) for (let j = 0; j < TH; j++) skirt(j * TW + a * TILE);
-  for (let b = 1; b < NY; b++) for (let i = 0; i < TW; i++) skirt(b * TILE * TW + i);
-  const N = TW * TH + extra.length;
-  const P3 = new Float32Array(N * 3), U2 = new Float32Array(N * 2), A1 = new Float32Array(N), N3 = new Float32Array(N * 3);
-  P3.set(pos); U2.set(uv); A1.set(alt); N3.set(nrm);
-  extra.forEach((k, e) => {
-    const v = TW * TH + e;
-    P3[3 * v] = pos[3 * k]; P3[3 * v + 1] = pos[3 * k + 1] - SKIRT; P3[3 * v + 2] = pos[3 * k + 2];
-    U2[2 * v] = uv[2 * k]; U2[2 * v + 1] = uv[2 * k + 1]; A1[v] = alt[k];
-    N3[3 * v] = nrm[3 * k]; N3[3 * v + 1] = nrm[3 * k + 1]; N3[3 * v + 2] = nrm[3 * k + 2];
-  });
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(P3, 3));
-  g.setAttribute('uv', new THREE.BufferAttribute(U2, 2));
-  g.setAttribute('alt', new THREE.BufferAttribute(A1, 1));
-  g.setAttribute('normal', new THREE.BufferAttribute(N3, 3));
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setAttribute('alt', new THREE.BufferAttribute(alt, 1));
+  g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   g.boundingBox = new THREE.Box3().setFromBufferAttribute(g.attributes.position);
   g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere());
 
@@ -759,38 +746,36 @@ function groundTiles(pos, uv, alt) {
                  z0: pos[3 * (j0 * TW + i0) + 2], z1: pos[3 * (j1 * TW + i0) + 2], level: -1 });
   }
   const at = (a, b) => (a >= 0 && b >= 0 && a < NX && b < NY) ? tiles[b * NX + a] : null;
-  // a tile's triangles at a step: its cells, and a skirt on each side its neighbour is coarser
+  // a tile's triangles at a step. On a side whose neighbour is coarser, each edge
+  // sample is moved back to the neighbour's sample at or before it: the edge's
+  // cells become fans to the neighbour's samples (some triangles shrinking to
+  // nothing), and the two tiles share every point along their edge.
   const cache = new Map();   // (the coarse levels, kept: they're small)
+  const stride = n => n ? LEVELS[n.level] : 0;
   function cells(t, s) {
-    const key = `${t.a},${t.b},${s}`;
+    const nb = [at(t.a - 1, t.b), at(t.a + 1, t.b), at(t.a, t.b - 1), at(t.a, t.b + 1)]
+      .map(n => n && n.level > t.level ? stride(n) : 0);
+    const [W, E, N, S] = nb;
+    const key = `${t.a},${t.b},${s},${nb.join(',')}`;
     if (cache.has(key)) return cache.get(key);
     const is = [], js = [];
     for (let i = t.i0; i < t.i1; i += s) is.push(i); is.push(t.i1);
     for (let j = t.j0; j < t.j1; j += s) js.push(j); js.push(t.j1);
+    const back = (v, v0, v1, k) => v === v1 ? v : v0 + Math.floor((v - v0) / k) * k;
+    const vid = (i, j) => {
+      if (N && j === t.j0) i = back(i, t.i0, t.i1, N);
+      else if (S && j === t.j1) i = back(i, t.i0, t.i1, S);
+      if (W && i === t.i0) j = back(j, t.j0, t.j1, W);
+      else if (E && i === t.i1) j = back(j, t.j0, t.j1, E);
+      return j * TW + i;
+    };
     const out = new Uint32Array((is.length - 1) * (js.length - 1) * 6);
     let p = 0;
     for (let y = 0; y < js.length - 1; y++) for (let x = 0; x < is.length - 1; x++) {
-      const a = js[y] * TW + is[x], b = js[y] * TW + is[x + 1], c = js[y + 1] * TW + is[x], d = js[y + 1] * TW + is[x + 1];
+      const a = vid(is[x], js[y]), b = vid(is[x + 1], js[y]), c = vid(is[x], js[y + 1]), d = vid(is[x + 1], js[y + 1]);
       out[p++] = a; out[p++] = c; out[p++] = b; out[p++] = b; out[p++] = c; out[p++] = d;
     }
     if (s >= 4) cache.set(key, out);
-    return out;
-  }
-  function skirts(t, s) {
-    const out = [];
-    const edge = (ks) => { for (let n = 0; n < ks.length - 1; n++) {
-      const p = ks[n], q = ks[n + 1], sp = skirtOf.get(p), sq = skirtOf.get(q);
-      if (sp === undefined || sq === undefined) continue;
-      out.push(p, sp, q, q, sp, sq);
-    } };
-    const line = (fixed, from, to, horiz) => { const ks = []; for (let v = from; v < to; v += s) ks.push(horiz ? fixed * TW + v : v * TW + fixed); ks.push(horiz ? fixed * TW + to : to * TW + fixed); return ks; };
-    for (const [n, side] of [[at(t.a - 1, t.b), 'w'], [at(t.a + 1, t.b), 'e'], [at(t.a, t.b - 1), 'n'], [at(t.a, t.b + 1), 's']]) {
-      if (!n || n.level <= t.level) continue;           // (only toward a coarser neighbour: its edge skips samples of ours)
-      if (side === 'w') edge(line(t.i0, t.j0, t.j1, false));
-      if (side === 'e') edge(line(t.i1, t.j0, t.j1, false));
-      if (side === 'n') edge(line(t.j0, t.i0, t.i1, true));
-      if (side === 's') edge(line(t.j1, t.i0, t.i1, true));
-    }
     return out;
   }
   const local = new THREE.Vector3();
@@ -815,11 +800,10 @@ function groundTiles(pos, uv, alt) {
     const key = tiles.map(t => t.level).join('');
     if (key === built) return false;
     built = key;
-    const parts = tiles.map(t => [cells(t, LEVELS[t.level]), skirts(t, LEVELS[t.level])]);
-    const total = parts.reduce((n, [c, k]) => n + c.length + k.length, 0);
-    const idx = new Uint32Array(total);
+    const parts = tiles.map(t => cells(t, LEVELS[t.level]));
+    const idx = new Uint32Array(parts.reduce((n, c) => n + c.length, 0));
     let p = 0;
-    for (const [c, k] of parts) { idx.set(c, p); p += c.length; idx.set(k, p); p += k.length; }
+    for (const c of parts) { idx.set(c, p); p += c.length; }
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     return true;
   }
