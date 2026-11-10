@@ -81,6 +81,7 @@
         "names": {
           "type": "object",
           "properties": {
+            "labels": {"type": "boolean", "default": true, "description": "For a Therion survey, the drawing's labels become place names. false: the entrances (and the config's places) only, as for a whole catchment."},
             "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."}
           }
         },

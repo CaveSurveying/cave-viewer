@@ -667,6 +667,7 @@ imgTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const groundMat = new THREE.ShaderMaterial({
   uniforms: {
     uMap: { value: imgTex }, uMask: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uLight: { value: LIGHT },
+    uDetail: { value: null }, uDA: { value: new THREE.Vector2() }, uDB: { value: new THREE.Vector2() }, uDOn: { value: 0 },
     uOpacity: { value: 0.7 }, uXray: { value: 0 }, uTime: { value: 0 },
   },
   vertexShader: `
@@ -681,10 +682,18 @@ const groundMat = new THREE.ShaderMaterial({
   fragmentShader: `
     uniform sampler2D uMap; uniform sampler2D uMask; uniform vec2 uRes; uniform vec3 uLight;
     uniform float uOpacity; uniform float uXray;
+    uniform sampler2D uDetail; uniform vec2 uDA; uniform vec2 uDB; uniform float uDOn;
     varying vec2 vUv; varying vec3 vN; varying float vAlt; varying vec3 vW;
     void main() {
       vec3 n = vN / max(length(vN), 1e-5);
       vec3 c = texture2D(uMap, vUv).rgb;
+      // the sharper imagery round where the view is looking, where it's loaded, fading at its edges
+      vec2 d = vUv * uDA + uDB;
+      if (uDOn > 0.5 && d.x > 0.0 && d.x < 1.0 && d.y > 0.0 && d.y < 1.0) {
+        vec4 t = texture2D(uDetail, d);
+        float edge = smoothstep(0.0, 0.08, min(min(d.x, 1.0 - d.x), min(d.y, 1.0 - d.y)));
+        c = mix(c, t.rgb, t.a * edge);
+      }
       float diff = max(dot(n, uLight), 0.0);
       c *= 0.55 + 0.75 * diff;
       // 10 m contours, every 50 m a little stronger, fading out where
@@ -1044,6 +1053,53 @@ const home = () => viewFrom(Math.PI * 0.8, -0.12, R0 * 1.05);
   }
   function done() {
     if (--pending === 0 && failed) $('img-credit').textContent += ` (${failed} tiles didn't load)`;
+  }
+}
+
+// -- sharper imagery near the view --------------------------------------------------------
+// The whole ground's imagery is one texture, so a big area gets a coarse
+// zoom (about 3 m a pixel over a whole catchment, against 0.3 m for one
+// cave). Close in, a second texture, DK zoom levels finer and DN tiles
+// across, is filled round where the view is looking and drawn over it,
+// and moves with the view. A small area's imagery is already at the finest
+// zoom, and has none.
+{
+  const DK = Math.min(3, 19 - Z), DN = 16, k = 2 ** DK;
+  const nx = tx1 - tx0 + 1, ny = ty1 - ty0 + 1;
+  if (DK > 0 && !STILL) {
+    const dimg = document.createElement('canvas');
+    dimg.width = dimg.height = DN * 256;
+    const dg = dimg.getContext('2d');
+    const dTex = new THREE.CanvasTexture(dimg);
+    dTex.colorSpace = THREE.SRGBColorSpace;
+    dTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    groundMat.uniforms.uDetail.value = dTex;
+    const tileM = W / ((mx1 - mx0) * 2 ** (Z + DK));       // (metres a tile at the finer zoom)
+    let wx0 = null, wy0 = null, gen = 0, timer = 0;
+    const place = () => {
+      // only close in: nearer than the window is wide
+      if (camera.position.distanceTo(controls.target) > DN * tileM * 1.2) { groundMat.uniforms.uDOn.value = 0; invalidate(); return; }
+      groundMat.uniforms.uDOn.value = 1;
+      const t = world.worldToLocal(controls.target.clone());
+      const [mx, my] = merc(t.x, -t.z), sd = 2 ** (Z + DK);
+      const cx = Math.floor(mx * sd), cy = Math.floor(my * sd);
+      if (wx0 !== null && Math.abs(cx - wx0 - DN / 2) < DN / 4 && Math.abs(cy - wy0 - DN / 2) < DN / 4) { invalidate(); return; }
+      wx0 = cx - DN / 2; wy0 = cy - DN / 2;
+      const my_gen = ++gen;
+      dg.clearRect(0, 0, dimg.width, dimg.height); dTex.needsUpdate = true;
+      groundMat.uniforms.uDA.value.set(nx * k / DN, ny * k / DN);
+      groundMat.uniforms.uDB.value.set((tx0 * k - wx0) / DN, 1 - (ty0 * k - wy0 + ny * k) / DN);
+      for (let ty = Math.max(wy0, ty0 * k); ty < Math.min(wy0 + DN, (ty1 + 1) * k); ty++)
+        for (let tx = Math.max(wx0, tx0 * k); tx < Math.min(wx0 + DN, (tx1 + 1) * k); tx++) {
+          const im = new Image();
+          im.crossOrigin = 'anonymous';
+          im.onload = () => { if (my_gen !== gen) return; dg.drawImage(im, (tx - wx0) * 256, (ty - wy0) * 256); dTex.needsUpdate = true; invalidate(); };
+          im.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${Z + DK}/${ty}/${tx}`;
+        }
+      invalidate();
+    };
+    // (after the view settles, not every frame of a move)
+    controls.addEventListener('change', () => { clearTimeout(timer); timer = setTimeout(place, 400); });
   }
 }
 

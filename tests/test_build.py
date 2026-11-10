@@ -153,3 +153,23 @@ class Walls(unittest.TestCase):
         z = [p[2] for p in fit_walls(walls, legs)[0][0]]
         self.assertAlmostEqual(max(z), 3, places=3)        # (up to where the splay reached)
         self.assertAlmostEqual(min(z), -1, places=3)       # (no splay down: the floor stays)
+
+
+class WallOutliers(unittest.TestCase):
+    """A wall point Therion put far off its passage is brought back (scene.fit_walls)."""
+    def walls(self, stray):
+        pts = [(x, y, z) for x in (0, 10) for y in (-1, 1) for z in (-1, 1)] + [(5, 1, stray)]
+        return [(pts, [(0, 1, 2), (1, 2, 3), (2, 3, 8)])]
+
+    def test_kept_to_the_splays(self):
+        from caveviewer.scene import fit_walls
+        legs = [((0, 0, 0), (10, 0, 0), 0), ((0, 0, 0), (0, 0, 3), 4)]
+        z = [p[2] for p in fit_walls(self.walls(50), legs)[0][0]]
+        self.assertAlmostEqual(max(z), 4, places=3)          # (3 m of splay and 1 m of slack, not 50)
+
+    def test_kept_near_the_rest_without_splays(self):
+        from caveviewer.scene import fit_walls, CAP
+        legs = [((0, 0, 0), (10, 0, 0), 0)]
+        z = [p[2] for p in fit_walls(self.walls(-60), legs)[0][0]]
+        self.assertGreaterEqual(min(z), -CAP)
+        self.assertLessEqual(max(z), 1)
