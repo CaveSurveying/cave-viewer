@@ -23,7 +23,9 @@ def offline(out_dir, here, worker=True):
         return
     files = ['./']
     for root, dirs, names in os.walk(out_dir):
-        dirs[:] = sorted(dirs)
+        # (not another cave's page in a folder of this one's, as when a
+        # whole area's page is the site's root and its caves are below it)
+        dirs[:] = sorted(d for d in dirs if not os.path.exists(os.path.join(root, d, 'scene.json')))
         for n in sorted(names):
             # (not the drawn survey, where there is one: it's kept apart, as it's seen)
             if n in ('sw.js', 'preview.png', '.DS_Store') or n.endswith(('LICENSE', 'LICENSE.txt')) or os.path.relpath(root, out_dir).split(os.sep)[0] == 'drawn':

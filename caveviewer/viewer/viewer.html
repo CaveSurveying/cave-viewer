@@ -3250,10 +3250,26 @@ addEventListener('resize', () => { lineMats.forEach(m => m.resolution.set(innerW
 // settings, only those changed from how the page starts, so a link opens
 // the view as it was shared: plan=1 (the drawn survey's 2D plan), vs (the
 // vertical scale, if not 1), ground (how much of it shows), xray=1 and names=0.
-let routeHash = '';
+let routeHash = '', atHash = '';
+// #at=<an entrance's name, or a survey in the .3d (Goughs, or GB.Crickmay)>:
+// opens looking at it from above, framing all of the survey's stations, for
+// a page of many caves to link straight to each
+function atView(q) {
+  const lc = q.toLowerCase(), pts = S.names.filter(n => n.t.toLowerCase() === lc).map(n => n.p);
+  if (!pts.length) {
+    const seg = '.' + lc + '.';
+    G.stn.forEach((n, i) => { if (('.' + n.toLowerCase() + '.').includes(seg)) pts.push(G.pos.slice(3 * i, 3 * i + 3)); });
+  }
+  if (!pts.length) return null;
+  const lo = [0, 1, 2].map(k => Math.min(...pts.map(p => p[k]))), hi = [0, 1, 2].map(k => Math.max(...pts.map(p => p[k])));
+  const t = P(lo.map((v, k) => (v + hi[k]) / 2)); t.y *= vsFinal();
+  const r = Math.max(60, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
+  const d = r * 2.4 * Math.max(1, Math.pow(1.3 / camera.aspect, 0.85)), az = Math.PI * 0.8, el = 0.75;
+  return { pos: new THREE.Vector3(t.x + d * Math.cos(el) * Math.sin(az), t.y + d * Math.sin(el), t.z + d * Math.cos(el) * Math.cos(az)), target: t, turn: true };
+}
 function writeHash() {
   if (STILL) return;
-  const h = routeHash ? [routeHash] : [];
+  const h = [routeHash, atHash].filter(Boolean);
   if (drawn.on || drawn.want) h.push('plan=1');      // (and while it waits for the drawing, or an update with it)
   else {
     const vs = +$('exag').querySelector('.on').dataset.v, g = groundMat.uniforms.uOpacity.value;
@@ -3276,6 +3292,8 @@ $('exag').addEventListener('click', writeHash);
     if (h.get('xray') === '1') set('xray', true);
     if (h.get('names') === '0') set('names', false);
     drawn.want = h.get('plan') === '1';     // (once the drawing has loaded, where there is one)
+    const at = h.get('at') && atView(h.get('at'));
+    if (at) { atHash = `at=${encodeURIComponent(h.get('at'))}`; flyTo(at, 3200); }
     // a route opens straight away (and stays in the address even if it can't
     // be found here, as with an old saved copy of the page about to update)
     if (h.get('from') && h.get('to')) {

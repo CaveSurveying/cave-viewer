@@ -53,6 +53,11 @@ top right), with the cave's own place names on them.
   long and shallow.
 - **From above** and **Over the ground** are quick views; the compass faces
   north when tapped, and on a phone turns the view with the phone.
+- Close in, the imagery sharpens round where you're looking (over a whole
+  area's page it's otherwise a few metres a pixel).
+- **`#at=`** in a link opens the view on one entrance or survey, framing it:
+  `#at=Goughs` frames every station of the survey named Goughs, for a page of
+  many caves to link straight to each.
 
 ![Redhouse Lane Swallet from above with X-ray on: the passages showing through the fields and woods, each named](docs/images/redhouse-xray.jpg)
 
