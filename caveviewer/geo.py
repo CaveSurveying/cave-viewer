@@ -1,14 +1,11 @@
-"""The National Grid: to lat/long and Web Mercator (for the imagery), and
-its grid references."""
+"""Survey grids to lat/long and Web Mercator (for the imagery), and their grid
+references: the British National Grid (osgb) and Irish Transverse Mercator (itm)."""
 import math
 
 
-def grid_to_ll(e, n):
-    """OSGB36 National Grid to WGS84 lat/long (degrees), by the Ordnance
-    Survey's formulae and a Helmert shift: good to a few metres, and the
-    caller corrects what is left with the entrance's OSTN15 position."""
-    a, b, f0 = 6377563.396, 6356256.909, 0.9996012717
-    lat0, lon0, e0, n0 = math.radians(49), math.radians(-2), 400000, -100000
+def tm_to_ll(e, n, a, b, f0, lat0, lon0, e0, n0):
+    """A Transverse Mercator grid to lat/long on its own ellipsoid (radians), by
+    the Ordnance Survey's formulae."""
     e2 = 1 - b * b / (a * a)
     nn = (a - b) / (a + b)
     lat, m = lat0, 0
@@ -30,6 +27,16 @@ def grid_to_ll(e, n):
            - de ** 3 / (6 * c * nu ** 3) * (nu / rho + 2 * t * t)
            + de ** 5 / (120 * c * nu ** 5) * (5 + 28 * t * t + 24 * t ** 4)
            - de ** 7 / (5040 * c * nu ** 7) * (61 + 662 * t * t + 1320 * t ** 4 + 720 * t ** 6))
+    return lat, lon
+
+
+def grid_to_ll(e, n):
+    """OSGB36 National Grid to WGS84 lat/long (degrees), by the Ordnance
+    Survey's formulae and a Helmert shift: good to a few metres, and the
+    caller corrects what is left with the entrance's OSTN15 position."""
+    a, b = 6377563.396, 6356256.909
+    e2 = 1 - b * b / (a * a)
+    lat, lon = tm_to_ll(e, n, a, b, 0.9996012717, math.radians(49), math.radians(-2), 400000, -100000)
     # Airy 1830 to GRS80 through Cartesian coordinates
     s, c = math.sin(lat), math.cos(lat)
     nu = a / math.sqrt(1 - e2 * s * s)
@@ -46,6 +53,13 @@ def grid_to_ll(e, n):
     for _ in range(10):
         lat = math.atan2(z + e2 * a2 / math.sqrt(1 - e2 * math.sin(lat) ** 2) * math.sin(lat), p)
     return math.degrees(lat), math.degrees(math.atan2(y, x))
+
+
+def itm_to_ll(e, n):
+    """Irish Transverse Mercator to lat/long (degrees). ITM is on ETRS89, which GPS
+    (WGS84) matches to well under a metre in Ireland, so there's no datum shift."""
+    lat, lon = tm_to_ll(e, n, 6378137.0, 6356752.314140, 0.99982, math.radians(53.5), math.radians(-8), 600000, 750000)
+    return math.degrees(lat), math.degrees(lon)
 
 
 def mercator(lat, lon):
@@ -79,11 +93,19 @@ def fit_affine(pairs):
     return solve(ru) + solve(rv)
 
 
-def grid_ref(e, n):
-    """A National Grid reference with its letters, to the metre: SN 86357 15878."""
+def grid_ref(e, n, crs='osgb'):
+    """A grid reference to the metre: SN 86357 15878 on the National Grid, ITM 525174 692314
+    on Irish Transverse Mercator (which has no letters)."""
+    if crs == 'itm':
+        return f'ITM {round(e):06d} {round(n):06d}'
+    # (the National Grid's: its letters, then the metres in that square)
     e1, n1 = int(e // 100000), int(n // 100000)
     l1 = (19 - n1) - (19 - n1) % 5 + (e1 + 10) // 5
     l2 = (19 - n1) * 5 % 25 + e1 % 5
     letter = lambda i: chr(ord('A') + i + (i > 7))      # no I
     e, n = round(e), round(n)
     return f'{letter(l1)}{letter(l2)} {e % 100000:05d} {n % 100000:05d}'
+
+
+# a survey grid's conversion to lat/long (degrees), by its config name (grid.crs)
+TO_LL = {'osgb': grid_to_ll, 'itm': itm_to_ll}

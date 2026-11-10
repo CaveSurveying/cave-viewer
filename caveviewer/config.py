@@ -11,7 +11,7 @@ import json
 import os
 
 SURVEYS = ('therion', 'survex')
-TERRAINS = ('ea', 'wales', 'flat')
+TERRAINS = ('ea', 'wales', 'copernicus', 'flat')
 DRAWN = ('therion-svg', 'scan', 'none')
 FEATURES = ('routes', 'directions', 'drawn', 'walls', 'ar', 'offline')
 
@@ -19,7 +19,7 @@ FEATURES = ('routes', 'directions', 'drawn', 'walls', 'ar', 'offline')
 BASE = {
     'area': '',
     'credit': '',
-    'grid': {'offset': [0, 0]},
+    'grid': {'offset': [0, 0], 'crs': 'osgb'},
     'survey': {'type': 'survex'},
     'names': {},
     'routing': {'duplicates': True, 'join': 3.0, 'codes_first': True, 'snap': 15},

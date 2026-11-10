@@ -10,9 +10,13 @@ Pennines, Snowdonia) fits as long as it rises less than that within the
 model. What's fetched is kept, averaged and so encoded, in the cache folder
 (cache=None keeps nothing).
 
-    ea      the Environment Agency's 1 m LiDAR composite DTM (England), by WCS
-    wales   the Welsh Government's 1 m LiDAR DTM 2020-22, by its WFS tile catalogue
-    flat    no LiDAR: a level ground just above the cave (for tests, or anywhere else)
+    ea          the Environment Agency's 1 m LiDAR composite DTM (England), by WCS
+    wales       the Welsh Government's 1 m LiDAR DTM 2020-22, by its WFS tile catalogue
+    copernicus  the Copernicus 30 m DEM (GLO-30), anywhere: for where there's no LiDAR (Ireland)
+    flat        no LiDAR: a level ground just above the cave (for tests, or anywhere else)
+
+A source on another grid than the National Grid (Irish Transverse Mercator) is told
+which (crs): copernicus works on any; ea and wales only on the National Grid.
 """
 import array
 import glob
@@ -31,6 +35,9 @@ CREDITS = {
           '<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL&nbsp;v3</a> &middot;',
     'wales': 'Ground: Welsh Government LiDAR 2020&ndash;22 DTM, &copy; Welsh Government, '
              '<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL&nbsp;v3</a> &middot;',
+    'copernicus': 'Ground: Copernicus DEM GLO-30, produced using Copernicus WorldDEM-30 &copy; DLR e.V. 2010&ndash;2014 '
+                  'and &copy; Airbus Defence and Space GmbH 2014&ndash;2018 provided under COPERNICUS by the European Union '
+                  'and ESA; all rights reserved &middot;',
     'flat': '',
 }
 
@@ -51,10 +58,11 @@ def encode(metres):
     return array.array('H', (max(1, round((m - base) * 100)) if m == m else 0 for m in metres)), base
 
 
-def cached(cache, e0, n0, e1, n1, step, make):
+def cached(cache, e0, n0, e1, n1, step, make, tag=''):
     """(heights, base) from the cache, made (make() -> metres) and kept the first time. A cache
-    file's name gives its base, after -base; one without (all from before bases) has base 0."""
-    stem = cache and os.path.join(cache, f'dtm-{e0}-{n0}-{e1}-{n1}-{step}m')
+    file's name gives its base, after -base; one without (all from before bases) has base 0.
+    (tag: what else tells the ground apart, as another source's grid: -copernicus-itm)"""
+    stem = cache and os.path.join(cache, f'dtm-{e0}-{n0}-{e1}-{n1}-{step}m' + (f'-copernicus{tag}' if tag else ''))
     found = stem and ([stem + '.u16.gz'] if os.path.exists(stem + '.u16.gz') else glob.glob(glob.escape(stem) + '-base*.u16.gz'))
     if found:
         raw = array.array('H', gzip.open(found[0]).read())
@@ -73,11 +81,15 @@ def cached(cache, e0, n0, e1, n1, step, make):
     return out, base
 
 
-def ground(kind, e0, n0, e1, n1, step, cache, level=None):
+def ground(kind, e0, n0, e1, n1, step, cache, level=None, crs='osgb'):
     """(columns, rows, heights, base) from the named source: heights in centimetres above base (metres)."""
     w, h = (e1 - e0) // step, (n1 - n0) // step
     if kind == 'flat':
         return (w, h, *encode([level] * (w * h)))
+    if crs != 'osgb' and kind in ('ea', 'wales'):
+        raise ValueError(f'the {kind} ground is on the National Grid: a survey on {crs} needs another (copernicus)')
     from importlib import import_module
     make = import_module(f'caveviewer.terrain.{kind}').fetch
+    if kind == 'copernicus':
+        return (w, h, *cached(cache, e0, n0, e1, n1, step, lambda: make(e0, n0, e1, n1, step, crs), f'-{crs}'))
     return (w, h, *cached(cache, e0, n0, e1, n1, step, lambda: make(e0, n0, e1, n1, step)))
