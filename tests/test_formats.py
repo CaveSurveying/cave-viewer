@@ -25,5 +25,21 @@ class Read3d(unittest.TestCase):
         self.assertTrue(next(f for n, _, f in stations if n == 'lrud.ent') & 4, 'the entrance flag')
 
 
+class LoxWallSurveys(unittest.TestCase):
+    def test_each_scrap_its_survey(self):
+        """Each scrap in a .lox is named by its survey's dotted path."""
+        import struct
+        import tempfile
+        from caveviewer.formats import lox_wall_surveys
+        names = b'Top\0Cave\0'
+        surveys = struct.pack('<6I', 0, 0, 0, 0, 0, 0) + struct.pack('<6I', 1, 0, 3, 0, 0, 0) + struct.pack('<6I', 2, 4, 4, 1, 0, 0)
+        scraps = struct.pack('<8I', 0, 2, 0, 0, 0, 0, 0, 0) + struct.pack('<8I', 1, 1, 0, 0, 0, 0, 0, 0)
+        d = struct.pack('<4I', 1, len(surveys), 3, len(names)) + surveys + names
+        d += struct.pack('<4I', 4, len(scraps), 2, 0) + scraps
+        with tempfile.NamedTemporaryFile(suffix='.lox', delete=False) as f:
+            f.write(d)
+        self.assertEqual(lox_wall_surveys(f.name), ['Top.Cave', 'Top'])
+
+
 if __name__ == '__main__':
     unittest.main()

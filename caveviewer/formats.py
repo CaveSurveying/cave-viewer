@@ -182,6 +182,38 @@ def read_lox_walls(path):
     return walls
 
 
+def lox_wall_surveys(path):
+    """For each scrap in a Therion .lox file (in read_lox_walls' order), the
+    survey it's in, as a dotted path from the top (CheddarCatchment.Longwood)."""
+    d = open(path, 'rb').read()
+    i, names, scraps = 0, {}, []
+    while i + 16 <= len(d):
+        kind, rec_bytes, n, data_bytes = struct.unpack_from('<4I', d, i)
+        recs, data = i + 16, i + 16 + rec_bytes
+        if kind == 1 and n:             # surveys: id, name (at, size), parent, title (at, size)
+            size = rec_bytes // n
+            for r in range(n):
+                sid, at, nb, parent = struct.unpack_from('<4I', d, recs + r * size)
+                names[sid] = (d[data + at:data + at + nb].split(b'\0')[0].decode('utf-8', 'replace'), parent)
+        elif kind == 4 and n:
+            size = rec_bytes // n
+            scraps += [struct.unpack_from('<2I', d, recs + r * size)[1] for r in range(n)]
+        i = data + data_bytes
+
+    def dotted(sid):
+        out, seen = [], set()
+        while sid in names and sid not in seen:
+            seen.add(sid)
+            name, parent = names[sid]
+            if name:
+                out.append(name)
+            if parent == sid:
+                break
+            sid = parent
+        return '.'.join(reversed(out))
+    return [dotted(s) for s in scraps]
+
+
 def read_tiff(data):
     """A single-band, 32-bit float GeoTIFF, uncompressed or deflated
     without a predictor (as the Welsh Government's LiDAR tiles are).

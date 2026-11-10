@@ -147,7 +147,8 @@
             "type": {"const": "therion", "description": "Walls built by Therion from a Therion survey's drawings, not from its splays: the survey step exports them to <work>/<cave>/walls.lox."},
             "lox": {"type": "string", "description": "A Therion .lox file with the passage walls, already in the repo."},
             "heights": {"enum": ["survey", "lox"], "description": "survey (the default for walls from the drawings): walls more than 3 m above or below their leg are put back on it, and roofs and floors are pushed out to reach the splays at its stations. lox (the default for a .lox in the repo): the walls as they are."},
-            "max_step": {"type": ["number", "null"], "description": "Metres: wall triangles taller than this and much taller than they are wide are left out, as curtains Therion draws between passages at different levels in one drawing. Off by default: it also leaves holes where a passage really does step down."}
+            "max_step": {"type": ["number", "null"], "description": "Metres: wall triangles taller than this and much taller than they are wide are left out, as curtains Therion draws between passages at different levels in one drawing. Off by default: it also leaves holes where a passage really does step down."},
+            "leave_out": {"type": "array", "items": {"type": "string"}, "description": "Surveys whose walls are left out (any level of a survey's dotted name: Longwood takes CheddarCatchment.Longwood and all in it), where a drawing makes poor walls: one scrap over a whole cave, say."}
           },
           "description": "Passage walls, where there are any: {\"type\": \"therion\"} for walls from a Therion survey's drawings, or {\"lox\": path} for a .lox in the repo."
         },

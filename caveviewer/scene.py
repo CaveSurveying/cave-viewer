@@ -447,6 +447,13 @@ def build(cfg, cave, out_dir, chromium=None):
             max_step = cave['walls'].get('max_step')     # (off unless asked for: it leaves holes where a passage really does step down)
             cut = 0
             meshes = read_lox_walls(lox)
+            leave = [x.lower() for x in cave['walls'].get('leave_out', [])]
+            if leave:
+                # (walls.leave_out: surveys whose drawings make poor walls, left out)
+                from caveviewer.formats import lox_wall_surveys
+                inside = lambda sv: any(f'.{x}.' in f'.{sv.lower()}.' for x in leave)
+                keep = [not inside(sv) for sv in lox_wall_surveys(lox)]
+                meshes = [m for m, k in zip(meshes, keep) if k]
             if cave['walls'].get('heights', 'survey' if cave['walls'].get('type') == 'therion' else 'lox') == 'survey':
                 meshes = fit_walls(meshes, legs)
             gaps = bridges(meshes, legs)
