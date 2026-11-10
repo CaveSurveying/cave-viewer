@@ -89,6 +89,7 @@
   .seg button { background: transparent; color: var(--muted); border: 0; padding: 4px 9px; font: inherit; font-size: 12px; cursor: pointer; }
   .seg button.on { background: rgba(255, 255, 255, .14); color: #fff; }
   .buttons { display: flex; gap: 6px; margin-top: 8px; }
+  @media (hover: none) { .keys-hint { display: none; } }
   #panel .hint { margin: 6px 0 0; font-size: 11px; line-height: 1.35; color: var(--muted); }
   .btn { flex: 1; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 9px; padding: 7px 0; font: inherit; font-size: 12px; cursor: pointer; transition: .15s; }
@@ -346,7 +347,7 @@
     <div class="row" id="drawn-row" hidden><label for="drawn" title="The 2D plan: the cave flattened onto the drawn survey, seen from above">Drawn survey (2D)</label><label class="toggle"><input id="drawn" type="checkbox"><span></span></label></div>
     <div class="row not-drawn"><label>Vertical scale</label>
       <span class="seg" id="exag"><button data-v="1" class="on">1&times;</button><button data-v="1.5">1.5&times;</button><button data-v="2.5">2.5&times;</button></span></div>
-    <p class="hint">Scroll to zoom towards the pointer, and on through the cave. Double-click the cave to look there. Right-drag to move sideways.</p>
+    <p class="hint">Scroll to zoom towards the pointer, and on through the cave. Double-click the cave to look there. Right-drag to move sideways.<span class="keys-hint"> Keys: arrows turn and tilt, W A S D move, Q E down and up, + &minus; zoom, shift for faster.</span></p>
     <div class="buttons">
       <button class="btn" id="v-reset">Reset</button>
       <button class="btn" id="v-top">From above</button>
@@ -1942,6 +1943,53 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === 'r' || e.key === 'R') setSpin(!spinning);
 });
+// The keyboard: the arrows turn and tilt the view, W A S D move it over the
+// ground (the way you're facing), Q and E down and up, + and - zoom; shift
+// for faster. Held, they keep going, a little each frame. (With a route open,
+// left and right are its Back and Next, as above.)
+const KEYS = {
+  ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+  w: 'fwd', s: 'back', a: 'west', d: 'east', q: 'sink', e: 'rise',
+  '+': 'in', '=': 'in', '-': 'out', '_': 'out',
+};
+const held = new Set();
+const keyOf = e => KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key]
+  ?? { NumpadAdd: 'in', NumpadSubtract: 'out' }[e.code];
+addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  const k = keyOf(e);
+  if (!k || (route && (k === 'left' || k === 'right'))) return;
+  if (e.target.closest?.('button, [role="button"], #r-steps') && e.key.startsWith('Arrow')) return;   // (a focused list or button keeps its own arrows)
+  e.preventDefault();
+  held.add(k); fly = null; idleSince = performance.now(); invalidate();
+});
+addEventListener('keyup', e => { const k = keyOf(e); if (k) held.delete(k); });
+addEventListener('blur', () => held.clear());
+const kOff = new THREE.Vector3(), kSph = new THREE.Spherical(), kMove = new THREE.Vector3();
+function keyFrame(dt) {
+  if (!held.size || first) return false;    // (not before the cave's there)
+  kOff.copy(camera.position).sub(controls.target);
+  if (!(kOff.lengthSq() > 1e-6)) return false;
+  const h = k => held.has(k) ? 1 : 0, fast = held.shift ? 3 : 1;
+  idleSince = performance.now();
+  kSph.setFromVector3(kOff);
+  if (!compassTurning()) kSph.theta += (h('left') - h('right')) * 1.2 * dt * fast;
+  kSph.phi = Math.min(controls.maxPolarAngle, Math.max(controls.minPolarAngle,
+    kSph.phi + (h('down') - h('up')) * 0.9 * dt * fast));
+  kSph.makeSafe();     // (straight down, as on the 2D plan, still keeps which way it's turned)
+  kSph.radius = Math.min(controls.maxDistance, Math.max(controls.minDistance,
+    kSph.radius * Math.exp((h('out') - h('in')) * 1.6 * dt * fast)));
+  // over the ground: forward is the way the camera faces, flattened
+  const az = kSph.theta, step = Math.max(2, kSph.radius) * 0.9 * dt * fast;
+  const f = h('fwd') - h('back'), r = h('east') - h('west'), u = h('rise') - h('sink');
+  kMove.set(-Math.sin(az) * f + Math.cos(az) * r, u, -Math.cos(az) * f - Math.sin(az) * r).multiplyScalar(step);
+  controls.target.add(kMove);
+  camera.position.copy(controls.target).add(kOff.setFromSpherical(kSph));
+  camera.lookAt(controls.target);
+  return true;
+}
+addEventListener('keydown', e => { held.shift = e.shiftKey; }, { capture: true });
+addEventListener('keyup', e => { held.shift = e.shiftKey; }, { capture: true });
 
 const setGround = v => { groundMat.uniforms.uOpacity.value = v; $('opacity').value = v; surface.forEach(o => { o.visible = v > 0; }); };
 $('opacity').oninput = e => setGround(+e.target.value);
@@ -3525,6 +3573,7 @@ function frame() {
   }
   // spin, pausing while someone is handling the model and for a few seconds after
   controls.autoRotate = spinning && !drawn.on && !fly && !userHolding && now - idleSince > 4000;   // (a map stays still)
+  const keyed = keyFrame(dt);
   const moved = controls.update(dt);
   routeFrame(dt);
   frameView();
@@ -3539,7 +3588,7 @@ function frame() {
   // keep going while anything is still moving: a flight, the damping after a
   // drag, the spin (or waiting to resume it), compass mode, the route's dashes
   const drawnMoving = drawnFrame(now);
-  if (fly || moved || spinning || compassOn || drawnMoving || (route && now < dashUntil)) invalidate();
+  if (fly || moved || keyed || spinning || compassOn || drawnMoving || (route && now < dashUntil)) invalidate();
 }
 loopReady = true;
 invalidate();
