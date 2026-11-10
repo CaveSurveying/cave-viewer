@@ -207,3 +207,35 @@ class EAPieces(unittest.TestCase):
     def test_small_in_one(self):
         self.check(345000, 151000, 345600, 151400, 2)
         self.assertEqual(len(self.asked), 1)
+
+
+class Patiently(unittest.TestCase):
+    """The LiDAR service, asked again after it says it's asked too often."""
+    def test_waits_and_tries_again(self):
+        import urllib.error
+        from caveviewer.terrain import ea
+        calls, waits = [], []
+
+        def get(url):
+            calls.append(url)
+            if len(calls) < 3:
+                raise urllib.error.HTTPError(url, 429, 'Too Many Requests', {'Retry-After': '30'}, None)
+            return b'ok'
+        real, ea.get = ea.get, get
+        try:
+            self.assertEqual(ea.patiently('u', sleep=waits.append), b'ok')
+        finally:
+            ea.get = real
+        self.assertEqual(waits, [30, 30])          # (as long as it says, longer than the 5 and 10 s it would wait)
+
+    def test_gives_up_in_the_end(self):
+        from caveviewer.terrain import ea
+
+        def get(url):
+            raise TimeoutError('timed out')
+        real, ea.get = ea.get, get
+        try:
+            with self.assertRaises(TimeoutError):
+                ea.patiently('u', sleep=lambda s: None)
+        finally:
+            ea.get = real

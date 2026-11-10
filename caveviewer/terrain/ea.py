@@ -4,6 +4,7 @@ than the service will send at once (a whole catchment, say)."""
 import array
 import math
 import sys
+import time
 
 from caveviewer.formats import read_tiff
 from caveviewer.terrain import get
@@ -34,6 +35,27 @@ def fetch(e0, n0, e1, n1, step):
     return out
 
 
+TRIES = 6         # the service is slow, now and then gives up, and limits how often it's asked (429)
+
+
+def patiently(url, sleep=time.sleep):
+    """get(url), tried again after a wait when the service times out or says
+    it's asked too often: as long as it says (Retry-After), else longer each
+    time (5 s, 10 s, 20 s ...)."""
+    for attempt in range(TRIES):
+        try:
+            return get(url)
+        except OSError as e:
+            if attempt == TRIES - 1:
+                raise
+            wait = 5 * 2 ** attempt
+            after = getattr(e, 'headers', None) and e.headers.get('Retry-After')
+            if after and after.strip().isdigit():
+                wait = max(wait, int(after))
+            print(f'  retrying in {wait} s ({e})', file=sys.stderr)
+            sleep(wait)
+
+
 COARSE = 4        # metres: a step this coarse or coarser is sampled by the service itself (scaleFactor), not averaged here
 COARSE_PIECE = 2000
 
@@ -52,14 +74,7 @@ def pieces(e0, n0, e1, n1, step):
         for pn in range(n0, n1, size):
             qe, qn = min(pe + size, e1), min(pn + size, n1)
             print(f'fetching LiDAR for {pe},{pn} to {qe},{qn}', file=sys.stderr)
-            for attempt in range(3):            # (the service is slow, and now and then gives up)
-                try:
-                    data = get(WCS.format(e0=pe, e1=qe, n0=pn, n1=qn) + (f'&scaleFactor={1 / step}' if coarse else ''))
-                    break
-                except OSError as e:
-                    if attempt == 2:
-                        raise
-                    print(f'  retrying ({e})', file=sys.stderr)
+            data = patiently(WCS.format(e0=pe, e1=qe, n0=pn, n1=qn) + (f'&scaleFactor={1 / step}' if coarse else ''))
             tw, th, v, (x0, y0), px = read_tiff(data)
             k = step if coarse else 1
             if (tw * k, th * k, round(x0), round(y0), round(px, 3)) != (qe - pe, qn - pn, pe, qn, float(k)):
