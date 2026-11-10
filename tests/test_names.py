@@ -56,6 +56,14 @@ class Entrances(unittest.TestCase):
                       'nc3.leck.lostjohns.entrance', 'nc3.leck.ireby.akahole.entrance')
         self.assertEqual(list(e.values())[:3], ['Pipikin Entrance', 'Smokey Hole', 'Petersons Pot'])
 
+    def test_entrance_surveys(self):
+        # a survey in a cave named for its entrance names it, unless it repeats the cave's name
+        e = entrances('nc3.wk.kmc.valleyentrance.0', 'nc3.wk.kmc.roof_tunnel.2', 'nc3.wk.swinsto.1',
+                      'nc3.wk.hammerpot.hammerentrance.0', 'nc3.wk.rowtenpot.1')
+        self.assertEqual(e['nc3.wk.kmc.valleyentrance.0'], 'Valley Entrance')
+        self.assertEqual(e['nc3.wk.kmc.roof_tunnel.2'], 'Kmc')
+        self.assertEqual(e['nc3.wk.hammerpot.hammerentrance.0'], 'Hammer Pot')
+
     def test_all_different(self):
         e = entrances('a.x.jinglingcavetop.7', 'a.x.jinglingcavetop.3', 'a.x.jinglingcavetop2.9x', 'a.y.z.1')
         self.assertEqual(len(set(e.values())), 4)
