@@ -158,18 +158,31 @@
   #route .x.ico { width: 30px; height: 26px; display: grid; place-items: center; border-radius: 8px; }
   #route .x.ico svg { width: 15px; height: 15px; }
   .row label small { color: var(--muted); font-size: 11px; }
-  #route .pick { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px 8px; align-items: center; }
-  #route .pick label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-  #route .pick label span { width: 30px; }
+  /* minmax(0, 1fr): a long entrance name mustn't widen the column past the panel */
+  #route .pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 6px 8px; align-items: center; }
+  #route .pick label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
+  #route .pick label span { width: 30px; flex: none; }
   #route .pick .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   #route .pick .trip { grid-column: 1 / 3; }
   body.route-step #r-prof { display: none; }      /* the height graph is for the whole route: a step leaves more room for the cave */
   /* a cave whose route text is turned off: the route, its height and Back and Next, with more room for the cave */
   body.no-directions #r-d, body.no-directions #r-steps, body.no-directions #route #r-print { display: none !important; }
   #route .pick .trip[hidden] { display: none; }     /* (a cave with no trips: the label's display: flex would show it) */
-  #route select { flex: 1; min-width: 0; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .12);
+  #route select { flex: 1; min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(255, 255, 255, .07); color: var(--text); border: 1px solid rgba(255, 255, 255, .12);
     border-radius: 8px; padding: 5px 6px; font: inherit; font-size: 13px; }
   #route select option { background: #141a26; }
+  /* From and To: type to search; the list shows the matches, To only those joined to From */
+  #route .combo { position: relative; flex: 1; min-width: 0; }
+  #route .combo input { width: 100%; box-sizing: border-box; min-width: 0; text-overflow: ellipsis; background: rgba(255, 255, 255, .07); color: var(--text);
+    border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 13px; }
+  #route .combo input:focus { outline: none; border-color: rgba(120, 170, 255, .7); background: rgba(255, 255, 255, .1); }
+  #route .opts { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; max-height: min(320px, 50vh); overflow-y: auto;
+    background: #141a26; border: 1px solid rgba(255, 255, 255, .14); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); padding: 4px 0; }
+  #route .opts[hidden] { display: none; }
+  #route .opts .grp { padding: 6px 10px 2px; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  #route .opts .opt { padding: 5px 10px; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #route .opts .opt.on { background: rgba(120, 170, 255, .22); }
+  #route .opts .none { padding: 6px 10px; font-size: 12px; color: var(--muted); }
   #r-swap { grid-row: 1 / 3; grid-column: 2; width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .07);
     border: 1px solid rgba(255, 255, 255, .12); color: var(--text); cursor: pointer; font-size: 15px; }
   #r-swap:hover { background: rgba(255, 255, 255, .15); }
@@ -341,9 +354,9 @@
   <div class="grab" id="r-grab" role="button" tabindex="0" aria-label="Pull up for more of the route, or down for less"><span></span></div>
   <div class="rhead"><h2 id="r-head" title="Show or hide the route details"><span class="full">Route</span><span class="ends" id="r-ends"></span></h2><span class="rbtns"><button class="x ico" id="r-print" title="Print this route as a card" aria-label="Print the route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg></button><button class="x" id="r-close" title="Close the route" aria-label="Close the route">&times;</button></span></div>
   <div class="pick">
-    <label><span class="dot" style="background:#4fd18b"></span><span>From</span><select id="r-from"></select></label>
+    <label><span class="dot" style="background:#4fd18b"></span><span>From</span><div class="combo"><input id="r-from" autocomplete="off" spellcheck="false" aria-label="From" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-from-opts" role="listbox" hidden></div></div></label>
     <button id="r-swap" title="Swap" aria-label="Swap the ends">&#8645;</button>
-    <label><span class="dot" style="background:#ff6b6b"></span><span>To</span><select id="r-to"></select></label>
+    <label><span class="dot" style="background:#ff6b6b"></span><span>To</span><div class="combo"><input id="r-to" autocomplete="off" spellcheck="false" aria-label="To" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-to-opts" role="listbox" hidden></div></div></label>
     <label class="trip" id="r-trip-row" hidden><span class="dot" style="background:#ffd27a"></span><span>Trip</span><select id="r-trip"></select></label>
   </div>
   <div class="chips" id="r-stats"></div>
@@ -2188,12 +2201,21 @@ for (let k = 0; k < G.edges.length; k += 2) {
   const a = G.edges[k], b = G.edges[k + 1], d = dist3(gp(a), gp(b));
   adj[a].set(b, d); adj[b].set(a, d);
 }
+// the cave's systems: its connected parts (a whole area's data has many, joined only over
+// the surface). Routes stay underground, so To is chosen from those joined to From.
+const COMP = new Int32Array(GN).fill(-1);
+for (let s = 0, k = 0; s < GN; s++) {
+  if (COMP[s] >= 0) continue;
+  const todo = [s]; COMP[s] = k;
+  while (todo.length) for (const v of adj[todo.pop()].keys()) if (COMP[v] < 0) { COMP[v] = k; todo.push(v); }
+  k++;
+}
 const passageOf = i => G.passage[i] >= 0 ? G.passages[G.passage[i]] : null;
 const nearestNode = p => { let best = 0, bd = Infinity; for (let i = 0; i < GN; i++) { const d = dist3(p, gp(i)); if (d < bd) { bd = d; best = i; } } return best; };
 // every name is a place to go, except entrances that don't join the surveyed cave;
 // the entrances first, in the order the scene has them
 const ENTS = S.names.filter(n => n.entrance && !n.apart).map(n => n.t);
-const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: nearestNode(n.at || n.p) }))
+const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: nearestNode(n.at || n.p), sys: n.sys }))
   .sort((a, b) => ((ENTS.indexOf(a.name) + 1 || 99) - (ENTS.indexOf(b.name) + 1 || 99)) || a.name.localeCompare(b.name));
 
 const HERE = new Map();          // 'Here (stn …)' -> station
@@ -2580,9 +2602,8 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   routeFrom = fromName; routeTo = toName; routeVia = via;
   const trip = TRIPS.find(t => t.from === fromName && t.to === toName && t.via.join('|') === via.join('|'));
   $('r-trip').value = trip ? trip.name : '';
-  for (const [sel, n] of [['r-from', fromName], ['r-to', toName]])
-    if (HERE.has(n) && ![...$(sel).options].some(o => o.value === n)) $(sel).insertAdjacentHTML('afterbegin', `<option>${escHtml(n)}</option>`);
   $('r-from').value = fromName; $('r-to').value = toName;
+  $('r-from').title = fromName; $('r-to').title = toName;     // the whole name, where the field cuts it short
   $('r-ends').textContent = trip ? trip.name : `${fromName} \u2192 ${toName}`;
   let path = [a.node];
   for (const s of [...stops, b]) {
@@ -2595,7 +2616,11 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   $('r-none')?.remove();
   if (!path) {
     route = null; routeGroup.visible = false;
-    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Pick two different places.' : 'No way through the survey between these.'}</span>`;
+    // (a whole area's data is many systems, joined only over the surface: routes stay underground)
+    const apart = COMP[a.node] !== COMP[b.node];
+    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Pick two different places.'
+      : apart ? `${escHtml(fromName)} and ${escHtml(toName)} aren't joined underground in the survey.`
+      : 'No way through the survey between these.'}</span>`;
     return;
   }
   route = new Route(path);
@@ -2857,8 +2882,72 @@ $('r-prof').addEventListener('click', e => {
 });
 
 // -- routes: the panel ---------------------------------------------------------------------
-const opts = PLACES.map(p => `<option>${p.name}</option>`).join('');
-$('r-from').innerHTML = opts; $('r-to').innerHTML = opts;
+// From and To: a box to type in, with the matching places below it (anywhere in the name),
+// entrances first, then the other places, each A to Z. To lists only the places joined to
+// From underground; picking a From in another system moves To to one of its entrances.
+const ENTSET = new Set(ENTS);
+const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+function choices(which) {
+  const from = placeBy(routeFrom);
+  let list = PLACES.map(p => p.name);
+  if (which === 'to' && from) list = PLACES.filter(p => COMP[p.node] === COMP[from.node] && p.name !== routeFrom).map(p => p.name);
+  const here = [...HERE.keys()].filter(n => n === (which === 'to' ? routeTo : routeFrom));
+  return [['Where you are', here], ['Entrances', list.filter(n => ENTSET.has(n)).sort(byName)],
+          ['Places', list.filter(n => !ENTSET.has(n)).sort(byName)]];
+}
+function defaultTo(from) {
+  const f = placeBy(from), to = placeBy(routeTo);
+  if (!f || (to && COMP[to.node] === COMP[f.node] && routeTo !== from)) return routeTo;
+  const same = PLACES.filter(p => COMP[p.node] === COMP[f.node] && p.name !== from);
+  return (same.find(p => ENTSET.has(p.name)) || same[0] || { name: routeTo }).name;
+}
+function combo(which, onPick) {
+  const input = $(`r-${which}`), box = $(`r-${which}-opts`);
+  let shown = [], on = -1;
+  const committed = () => which === 'to' ? routeTo : routeFrom;
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const match = n => { const l = n.toLowerCase(); return words.every(w => l.includes(w)); };
+    // (the field shows the current choice: until it's edited, list everything)
+    const all = input.dataset.typed !== '1';
+    shown = []; let html = '';
+    for (const [title, names] of choices(which)) {
+      const hits = all ? names : names.filter(match);
+      if (!hits.length) continue;
+      html += `<div class="grp">${title}</div>`;
+      for (const n of hits) html += `<div class="opt" role="option" data-k="${shown.push(n) - 1}">${escHtml(n)}</div>`;
+    }
+    if (!shown.length) html = `<div class="none">${which === 'to' && routeFrom ? `Nothing joined to ${escHtml(routeFrom)} by that name` : 'No place by that name'}</div>`;
+    box.innerHTML = html;
+    on = all ? shown.indexOf(committed()) : (shown.length ? 0 : -1);
+    mark(true);
+  }
+  function mark(scroll) {
+    box.querySelectorAll('.opt').forEach(el => el.classList.toggle('on', +el.dataset.k === on));
+    if (scroll && on >= 0) box.querySelector(`.opt[data-k="${on}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+  function open() { input.dataset.typed = ''; render(); box.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+  function close() { box.hidden = true; input.setAttribute('aria-expanded', 'false'); input.value = committed() || ''; input.dataset.typed = ''; }
+  function pick(k) { const n = shown[k]; close(); if (n != null && n !== committed()) onPick(n); input.blur(); }
+  input.addEventListener('focus', () => { open(); input.select(); });
+  input.addEventListener('input', () => { input.dataset.typed = '1'; render(); box.hidden = false; });
+  input.addEventListener('blur', () => setTimeout(close, 120));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (box.hidden) open();
+      on = Math.max(0, Math.min(shown.length - 1, on + (e.key === 'ArrowDown' ? 1 : -1))); mark(true);
+    } else if (e.key === 'Enter') { e.preventDefault(); if (on >= 0) pick(on); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); input.blur(); }
+  });
+  box.addEventListener('pointerdown', e => {               // (pointerdown: before the input loses focus)
+    const el = e.target.closest('.opt');
+    if (el) { e.preventDefault(); pick(+el.dataset.k); }
+  });
+  box.addEventListener('click', e => e.preventDefault());   // (inside the label: don't focus the field again)
+  box.addEventListener('pointermove', e => { const el = e.target.closest('.opt'); if (el && +el.dataset.k !== on) { on = +el.dataset.k; mark(false); } });
+}
 // the cave's trips (names.json): ready-made routes through places in turn
 const TRIPS = (S.trips || []).map(t => ({ name: t.name, from: t.via[0], to: t.via[t.via.length - 1], via: t.via.slice(1, -1) }))
   .filter(t => [t.from, t.to, ...t.via].every(placeBy));
@@ -2932,8 +3021,8 @@ $('r-close').onclick = closeRoute;
   sheetTo = st => { if (state() === 'peek' || st === 'full' || st === 'peek') setSheet(st); };
   $('r-grab').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(state() === 'peek' ? 'half' : 'peek'); } });
 }
-$('r-from').onchange = () => openRoute($('r-from').value, $('r-to').value);
-$('r-to').onchange = () => openRoute($('r-from').value, $('r-to').value);
+combo('from', n => openRoute(n, defaultTo(n)));
+combo('to', n => openRoute(routeFrom, n));
 $('r-swap').onclick = () => openRoute(routeTo, routeFrom, 0, true, routeVia.slice().reverse());
 $('r-prev').onclick = () => goStep(cur - 1);
 $('r-next').onclick = () => goStep(cur + 1);

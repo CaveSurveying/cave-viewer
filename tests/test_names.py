@@ -20,6 +20,7 @@ class Nice(unittest.TestCase):
         self.assertEqual(nice('upper-skirwith-entrance'), 'Upper Skirwith Entrance')
         self.assertEqual(nice('p8'), 'P8')
         self.assertEqual(nice('5ways'), '5 Ways')
+        self.assertEqual(nice('pipikinentrance'), 'Pipikin Entrance')
 
 
 class Entrances(unittest.TestCase):
@@ -46,6 +47,14 @@ class Entrances(unittest.TestCase):
         e = entrances('kd.east.bradagarthpot', 'kd.east.surfacemaster.surface2.53', 'kd.east.swinsto.a.1',
                       'kd.east.rowtenpot.b.2', 'kd.east.kingpot.c.1', 'kd.p8.p8.0')
         self.assertEqual(list(e.values()), ['Bradagarth Pot', 'East', 'Swinsto', 'Rowten Pot', 'King Pot', 'P8'])
+
+    def test_surface_surveys_passed_over(self):
+        # a surface survey that ties several entrances in names none of them: their stations do
+        e = entrances('nc3.leck.yeadon_pipikin_surface_survey.pipikinentrance',
+                      'nc3.leck.yeadon_pipikin_surface_survey.smokeyhole',
+                      'nc3.leck.yeadon_pipikin_surface_survey.petersonspot',
+                      'nc3.leck.lostjohns.entrance', 'nc3.leck.ireby.akahole.entrance')
+        self.assertEqual(list(e.values())[:3], ['Pipikin Entrance', 'Smokey Hole', 'Petersons Pot'])
 
     def test_all_different(self):
         e = entrances('a.x.jinglingcavetop.7', 'a.x.jinglingcavetop.3', 'a.x.jinglingcavetop2.9x', 'a.y.z.1')

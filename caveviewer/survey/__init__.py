@@ -76,10 +76,10 @@ def says(station):
 # survey and station names that say nothing of where they are: numbers, "entrance",
 # the survey files' own words (master, area, surface, nosplays)
 GENERIC = re.compile(r'^(\d+\w{0,2}|[a-z]?\d+[a-z]?|ents?\d*|entrance\d*|main|master|surface\w*|fixed_points|'
-                     r'.*[_-](master|area|nosurface|nosplays)\w*)$', re.I)
+                     r'.*[_-](master|area|nosurface|nosplays)\w*|.*[_-]surface([_-]survey)?)$', re.I)   # (yeadon_pipikin_surface_survey)
 # words cave names run together ("lancasterhole", "greatdoukpot"), split where they end or begin one
 _ENDS = ('swallet', 'cavern', 'caves', 'cave', 'pot', 'hole', 'holes', 'mine', 'sinks', 'sink', 'shaft', 'rift',
-         'chamber', 'passage', 'inlet', 'dig', 'series', 'head', 'rising', 'level', 'sough', 'adit')
+         'chamber', 'passage', 'inlet', 'dig', 'series', 'head', 'rising', 'level', 'sough', 'adit', 'entrance')
 _STARTS = ('great', 'little', 'high', 'low', 'upper', 'lower', 'top', 'old', 'new', 'big')
 
 
