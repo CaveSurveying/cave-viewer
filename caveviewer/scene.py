@@ -256,6 +256,8 @@ def ways(g, nm, at):
 
 
 MOVED = 3.0       # metres: walls whose middle is this far above or below their leg are put back on it
+SLACK = 1.0       # metres: how far past its splays' reach a wall may go
+FLOOR, CAP = 1.5, 8.0   # metres: the most a wall goes above or below a leg with no splays, at least and at most
 
 
 def fit_walls(walls, legs):
@@ -268,7 +270,10 @@ def fit_walls(walls, legs):
     MOVED metres above or below it, they're moved back round it, keeping their
     shape. And where the splays at a leg's stations reach higher or lower than
     its walls, the roof and floor are raised and lowered to meet them (never
-    brought in). Otherwise Therion's walls are left as they are."""
+    brought in). And no point goes further from its leg than the splays
+    reach (SLACK past them), or, with no splays, than twice as far as most of
+    the leg's walls go (FLOOR to CAP metres): Therion puts a few points of
+    some drawings tens of metres off."""
     import numpy as np
     seg = [(a, b) for a, b, f in legs if not f & 5 and a != b]
     if not seg or not walls:
@@ -306,12 +311,21 @@ def fit_walls(walls, legs):
         if abs(mid) > MOVED:
             # this leg's walls are off at another level: back round the leg, the same shape
             z[m] -= mid
-        if ends[j][0] or ends[j][1]:
+        e = [x for x in ends[j] if x]
+        o = z[m] - zc[m]
+        if e:
             # as high and low as the splays at its stations reach, where that's further
-            e = [x for x in ends[j] if x]
             up, down = max(x[0] for x in e), max(x[1] for x in e)
-            o = z[m] - zc[m]
-            z[m] = zc[m] + np.where(o > 0, np.maximum(o, np.minimum(o * 4, up)), np.minimum(o, np.maximum(o * 4, -down)))
+            o = np.where(o > 0, np.maximum(o, np.minimum(o * 4, up)), np.minimum(o, np.maximum(o * 4, -down)))
+            top, bottom = up + SLACK, down + SLACK
+        else:
+            # no splays: no further than most of this leg's walls go, and never far
+            above, below = o[o > 0], -o[o < 0]
+            top = min(max(2 * np.percentile(above, 75) if above.size else 0, FLOOR), CAP)
+            bottom = min(max(2 * np.percentile(below, 75) if below.size else 0, FLOOR), CAP)
+        # and no point further: where a drawing covers passages at different levels,
+        # Therion puts some of its points tens of metres up or down, out of the hill
+        z[m] = zc[m] + np.clip(o, -bottom, top)
     out, k = [], 0
     for ps, ts in walls:
         out.append(([(p[0], p[1], float(z[k + i])) for i, p in enumerate(ps)], ts))
