@@ -45,7 +45,8 @@
         "grid": {
           "type": "object",
           "properties": {
-            "offset": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "default": [0, 0], "description": "Added to the survey's x, y for full National Grid coordinates: [300000, 100000] for a survey on the ST square, [0, 0] for one already on the full grid."},
+            "offset": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "default": [0, 0], "description": "Added to the survey's x, y for full grid coordinates: [300000, 100000] for a survey on the National Grid's ST square, [0, 0] for one already on the full grid."},
+            "crs": {"enum": ["osgb", "itm"], "default": "osgb", "description": "The survey's grid: osgb, the British National Grid (EPSG:27700); itm, Irish Transverse Mercator (EPSG:2157). It places the imagery and gives the grid reference; the ground's source must cover it (copernicus covers both)."},
             "fix": {"type": "object", "required": ["station", "at"], "description": "For a survey in its own local coordinates: the whole survey moved so this station is at this place (x, y in the survey's grid square, as offset makes full, and the height).",
               "properties": {"station": {"type": "string"}, "at": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}}}
           }
@@ -110,7 +111,7 @@
           "type": "object",
           "required": ["type"],
           "properties": {
-            "type": {"enum": ["ea", "wales", "flat"], "description": "ea: the Environment Agency's 1 m LiDAR composite DTM (England). wales: the Welsh Government's 1 m LiDAR DTM 2020-22. flat: no LiDAR, a level ground just above the cave."},
+            "type": {"enum": ["ea", "wales", "copernicus", "flat"], "description": "ea: the Environment Agency's 1 m LiDAR composite DTM (England). wales: the Welsh Government's 1 m LiDAR DTM 2020-22. copernicus: the Copernicus 30 m DEM (GLO-30), anywhere, for where there's no LiDAR (Ireland): a surface model, so it includes trees and buildings. flat: no LiDAR, a level ground just above the cave."},
             "step": {"type": "integer", "default": 2, "description": "Metres between the model's ground samples (a multiple of the 1 m LiDAR)."},
             "margin": {"type": "number", "default": 250, "description": "Metres of ground round the cave."},
             "align": {"type": "integer", "default": 100, "description": "The ground's edges on a grid of this many metres."},

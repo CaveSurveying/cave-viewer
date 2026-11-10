@@ -17,7 +17,7 @@ import re
 import sys
 
 from caveviewer.formats import read_3d, read_lox_walls
-from caveviewer.geo import fit_affine, grid_ref, grid_to_ll, mercator
+from caveviewer.geo import TO_LL, fit_affine, grid_ref, mercator
 from caveviewer.offline import offline
 from caveviewer.preview import preview
 from caveviewer.terrain import CREDITS, ground
@@ -344,7 +344,9 @@ def kml_entrance(path):
 
 def build(cfg, cave, out_dir, chromium=None):
     """The cave's 3D view in out_dir."""
-    SO = tuple(cave['grid']['offset'])            # survey coordinates to the full National Grid
+    SO = tuple(cave['grid']['offset'])            # survey coordinates to the full grid
+    crs = cave['grid']['crs']                     # which grid: the National Grid or Irish Transverse Mercator
+    grid_to_ll = TO_LL[crs]
     T, R = cave['terrain'], cave['routing']
     legs, stations = cfg.read_centreline(cave)
     xs, ys, zs = zip(*[p for a, b, f in legs if not f & 1 for p in (a, b)])
@@ -357,7 +359,7 @@ def build(cfg, cave, out_dir, chromium=None):
     n0 = int(math.floor((min(ys) + SO[1] - margin) / al) * al)
     n1 = int(math.ceil((max(ys) + SO[1] + margin) / al) * al)
     tw, th, heights, hbase = ground(T['type'], e0, n0, e1, n1, step, cfg.at(T['cache']) if T.get('cache') else None,
-                                   level=T.get('level', max(zs) + 10))
+                                   level=T.get('level', max(zs) + 10), crs=crs)
     # the scene's origin: the middle of the ground, in survey coordinates
     ox, oy = (e0 + e1) / 2 - SO[0], (n0 + n1) / 2 - SO[1]
 
@@ -482,7 +484,7 @@ def build(cfg, cave, out_dir, chromium=None):
         'id': cave['id'],
         'built': datetime.date.today().isoformat(),
         'origin': [ox + SO[0], oy + SO[1]],
-        'grid_ref': grid_ref(ent[0] + SO[0], ent[1] + SO[1]),
+        'grid_ref': grid_ref(ent[0] + SO[0], ent[1] + SO[1], crs),
         'stats': {'length': round(length), 'depth': round(max(zs) - min(zs)),
                   'top': r(max(zs)), 'bottom': r(min(zs))},
         'terrain': {'file': 'terrain.bin', 'w': tw, 'h': th, 'step': step,
