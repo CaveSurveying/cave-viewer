@@ -1973,14 +1973,14 @@ function keyFrame(dt) {
   const h = k => held.has(k) ? 1 : 0, fast = held.shift ? 3 : 1;
   idleSince = performance.now();
   kSph.setFromVector3(kOff);
-  if (!compassTurning()) kSph.theta += (h('left') - h('right')) * 1.2 * dt * fast;
+  if (!compassTurning()) kSph.theta += (h('left') - h('right')) * 0.6 * dt * fast;
   kSph.phi = Math.min(controls.maxPolarAngle, Math.max(controls.minPolarAngle,
-    kSph.phi + (h('down') - h('up')) * 0.9 * dt * fast));
+    kSph.phi + (h('down') - h('up')) * 0.45 * dt * fast));
   kSph.makeSafe();     // (straight down, as on the 2D plan, still keeps which way it's turned)
   kSph.radius = Math.min(controls.maxDistance, Math.max(controls.minDistance,
-    kSph.radius * Math.exp((h('out') - h('in')) * 1.6 * dt * fast)));
+    kSph.radius * Math.exp((h('out') - h('in')) * 0.7 * dt * fast)));
   // over the ground: forward is the way the camera faces, flattened
-  const az = kSph.theta, step = Math.max(2, kSph.radius) * 0.9 * dt * fast;
+  const az = kSph.theta, step = Math.max(2, kSph.radius) * 0.3 * dt * fast;
   const f = h('fwd') - h('back'), r = h('east') - h('west'), u = h('rise') - h('sink');
   kMove.set(-Math.sin(az) * f + Math.cos(az) * r, u, -Math.cos(az) * f - Math.sin(az) * r).multiplyScalar(step);
   controls.target.add(kMove);
