@@ -78,12 +78,12 @@ def page(cfg, cave, caves, out):
         ground = 'Every surveyed passage, coloured by altitude, with the ground as a level plane above it.'
     else:
         ground = ('Every surveyed passage, coloured by altitude, set beneath '
-                  + ('a LiDAR model' if cave['terrain']['type'] in ('ea', 'wales') else 'a model') + ' of the ground with satellite imagery on it, so you can see which fields it runs under.')
+                  + ('a LiDAR model' if cave['terrain']['type'] in ('ea', 'wales') else 'a model') + ' of the ground with satellite imagery on it, so you can see what is on the surface above each passage.')
     parts.append(f'''<section><h2>3D view</h2>
 <div class="feature">{f'<a href="{three}/"><img src="{pre}" alt="{E(cave["name"])} in 3D"></a>' if pre else ''}
 <div><h3>Explore {E(cave.get('short_name') or cave['name'])} in 3D</h3>
 <p>{ground}{' Passage walls come from the survey drawings.' if cave['walls'] else ''}{' Pick two places in the cave to see the way between them.' if cave['features']['routes'] else ''}</p>
-<p class="note">Drag to turn it, scroll or pinch to zoom. Once opened it works offline, and in AR on an iPhone or iPad.</p>
+<p class="note">Drag to turn it, scroll or pinch to zoom. Once opened it works offline. It also works in AR on an iPhone or iPad, and in AR or VR on any device whose browser supports WebXR, such as an Android phone or a headset.</p>
 <p>{' '.join(links)}</p></div></div></section>''')
     # sheets
     sheets = [f for f in fs['files'] if f['kind'] == 'sheet']
