@@ -31,7 +31,7 @@ python -m caveviewer build caves.json --out site/
 
 ## What it does
 
-### The cave beneath the ground
+### Under the real ground
 
 The survey sits under the real ground: the Environment Agency's or the Welsh
 Government's 1 m LiDAR, or the Copernicus 30 m model where there's none, draped
