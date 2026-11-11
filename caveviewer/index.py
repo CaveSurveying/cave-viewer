@@ -16,7 +16,7 @@ def page(site, caves, out):
         s = json.load(open(os.path.join(out, c['path'], 'scene.json')))
         st = s['stats']
         img = f'<img src="{c["path"]}/preview.png" alt="" loading="lazy">' if os.path.exists(os.path.join(out, c['path'], 'preview.png')) else '<div class="noimg"></div>'
-        cards.append(f'''<a class="card" href="{c['path']}/">{img}<div class="txt">
+        cards.append(f'''<a class="card" href="{c.get('page') or c['path']}/">{img}<div class="txt">
   <h2>{html.escape(c['name'])}</h2>
   <p class="area">{html.escape(c['area'])} &middot; {s['grid_ref']}</p>
   <p class="nums"><b>{st['length'] / 1000:.1f} km</b> surveyed &middot; <b>{st['depth']} m</b> deep</p>

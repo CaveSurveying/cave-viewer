@@ -53,13 +53,18 @@ def build(cfg, cave, fetch=True):
         # (in the Survex file's own folder, where Therion's import looks for the .3d)
         subprocess.run(['cavern', os.path.basename(svx)], cwd=os.path.join(d, os.path.dirname(svx)), check=True, capture_output=True)
     common = os.path.exists(os.path.join(reg, 'common_layout.th'))
+    # the plan as an SVG for the drawn survey, and as ESRI shapes for the
+    # drawing's labels, only where they're used: a whole area's page has
+    # neither (and Therion 6.4.0 crashes drawing the Cheddar catchment's)
+    plan = cave['drawn']['type'] == 'therion-svg' and not cave['drawn'].get('svg')
+    labels = cave['names'].get('labels', True)
     cfg_lines = [
         'encoding utf-8',
         f'source {sv["source"]}',
         *[f'select {s}' for s in sv.get('select', [])],
         f'export model -fmt survex -o {out}/cave.3d',
-        f'export map -proj plan -fmt svg -layout web -o {out}/plan.svg',
-        f'export map -proj plan -fmt esri -o {out}/esri',
+        *([f'export map -proj plan -fmt svg -layout web -o {out}/plan.svg'] if plan else []),
+        *([f'export map -proj plan -fmt esri -o {out}/esri'] if labels else []),
         # the passage walls, from the drawings only (by default Therion also
         # builds them from every splay, which come out as spikes)
         *([f'export model -fmt loch -wall-source maps -o {out}/walls.lox'] if from_drawings(cave) else []),
@@ -78,7 +83,7 @@ def build(cfg, cave, fetch=True):
     with open(os.path.join(d, CONFIG), 'w') as f:
         f.write('\n'.join(cfg_lines) + '\n')
     r = subprocess.run(['therion', CONFIG], cwd=d, capture_output=True, text=True)
-    ok = r.returncode == 0 and os.path.exists(os.path.join(cfg.work_dir(cave), 'plan.svg'))
+    ok = r.returncode == 0 and all(os.path.exists(os.path.join(cfg.work_dir(cave), f)) for f in ['cave.3d'] + ['plan.svg'] * plan)
     print(f'{cave["name"]}: {"built" if ok else "FAILED"}', file=sys.stderr)
     if not ok:
         print('\n'.join((r.stdout + r.stderr).splitlines()[-15:]), file=sys.stderr)

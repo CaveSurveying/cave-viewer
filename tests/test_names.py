@@ -69,5 +69,21 @@ class Entrances(unittest.TestCase):
         self.assertEqual(len(set(e.values())), 4)
 
 
+class EntrancesOver(unittest.TestCase):
+    def test_renames_and_adds_keeping_the_rest(self):
+        """names.entrances renames one found entrance and adds another, keeping the rest."""
+        import tempfile
+        from caveviewer.survey import names_json
+
+        class Cfg:
+            def __init__(self, d): self.d = d
+            def at(self, p): return p
+            def work_dir(self, cave): return self.d
+        with tempfile.TemporaryDirectory() as d:
+            cave = {'names': {'entrances': {'a.rr.1': 'Rhino Rift', 'a.uf.ws18': 'Upper Flood Swallet'}}}
+            out = names_json(Cfg(d), cave, {}, '', {'a.rr.1': 'R Rift', 'a.gb.0': 'GB'})
+        self.assertEqual(out['entrances'], {'a.rr.1': 'Rhino Rift', 'a.gb.0': 'GB', 'a.uf.ws18': 'Upper Flood Swallet'})
+
+
 if __name__ == '__main__':
     unittest.main()

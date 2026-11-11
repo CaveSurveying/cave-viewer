@@ -121,6 +121,8 @@ def names_json(cfg, cave, places, comment, entrances=None, sort=False):
     base = json.load(open(cfg.at(cave['names']['file']), encoding='utf-8')) if cave['names'].get('file') else {}
     out = {'_comment': comment, **({k: v for k, v in base.items() if k != '_comment'})}
     out['entrances'] = cave.get('entrances') or base.get('entrances') or entrances or {}
+    # (names.entrances: over those, renaming one or adding one the survey doesn't flag)
+    out['entrances'] = {**out['entrances'], **cave['names'].get('entrances', {})}
     out['places'] = {**base.get('places', {}), **places, **cave.get('places', {})}
     if sort:
         out['places'] = dict(sorted(out['places'].items()))

@@ -155,6 +155,17 @@ class Walls(unittest.TestCase):
         self.assertAlmostEqual(min(z), -1, places=3)       # (no splay down: the floor stays)
 
 
+class WallBridges(unittest.TestCase):
+    """A wall triangle spanning the gap between two unconnected passages is left out (scene.bridges)."""
+    def test_fin_across_a_gap(self):
+        from caveviewer.scene import bridges
+        legs = [((0, 0, 0), (10, 0, 0), 0), ((60, 0, 0), (70, 0, 0), 0)]
+        pts = [(0, 1, 0), (10, 1, 0), (5, 2, 1), (60, 1, 0), (70, 1, 0), (65, 2, 1)]
+        walls = [(pts, [(0, 1, 2), (3, 4, 5), (1, 2, 3)])]
+        # the first two are each passage's own walls; the third joins them
+        self.assertEqual(bridges(walls, legs), {(0, 2)})
+
+
 class WallOutliers(unittest.TestCase):
     """A wall point Therion put far off its passage is brought back (scene.fit_walls)."""
     def walls(self, stray):

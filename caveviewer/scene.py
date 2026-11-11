@@ -258,6 +258,7 @@ def ways(g, nm, at):
 MOVED = 3.0       # metres: walls whose middle is this far above or below their leg are put back on it
 SLACK = 1.0       # metres: how far past its splays' reach a wall may go
 FLOOR, CAP = 1.5, 8.0   # metres: the most a wall goes above or below a leg with no splays, at least and at most
+GAP = 15.0        # metres: a wall triangle this wide, all of it this far from any leg in plan, bridges a gap
 
 
 def fit_walls(walls, legs):
@@ -331,6 +332,38 @@ def fit_walls(walls, legs):
         out.append(([(p[0], p[1], float(z[k + i])) for i, p in enumerate(ps)], ts))
         k += len(ps)
     return out
+
+
+def bridges(walls, legs):
+    """Wall triangles that span a gap between passages rather than wall one:
+    over GAP metres across, with their middle or the middle of their longest
+    edge more than GAP from any leg in plan. Where a drawing's passages aren't
+    surveyed between (an old drawing over a few long legs), Therion joins
+    their walls across the gap with long fins."""
+    import numpy as np
+    seg = [(a, b) for a, b, f in legs if not f & 5 and a != b]
+    if not seg:
+        return set()
+    A = np.array([s[0][:2] for s in seg], float)
+    AB = np.array([s[1][:2] for s in seg], float) - A
+    L2 = np.maximum((AB ** 2).sum(1), 1e-9)
+    tris = [(m, k, np.array([pts[i][:2] for i in t], float)) for m, (pts, ts) in enumerate(walls) for k, t in enumerate(ts)]
+    if not tris:
+        return set()
+    V = np.array([v for _, _, v in tris])
+    pairs = ((0, 1), (1, 2), (0, 2))
+    E = np.array([np.hypot(*(V[:, a] - V[:, b]).T) for a, b in pairs])
+    wide = E.max(0) > GAP
+    r, j = np.arange(len(V)), E.argmax(0)
+    longest = (V[r, [pairs[k][0] for k in j]] + V[r, [pairs[k][1] for k in j]]) / 2
+    far = np.zeros(len(V), bool)
+    for q in (V.mean(1), longest):
+        for i0 in range(0, len(q), 2000):
+            x = q[i0:i0 + 2000, None]
+            t = np.clip(((x - A) * AB).sum(2) / L2, 0, 1)
+            d = np.hypot(*(x - (A + t[..., None] * AB)).transpose(2, 0, 1)).min(1)
+            far[i0:i0 + 2000] |= d > GAP
+    return {(m, k) for (m, k, _), w, f in zip(tris, wide, far) if w and f}
 
 
 def steep(pts, tri, step):
@@ -414,19 +447,31 @@ def build(cfg, cave, out_dir, chromium=None):
             max_step = cave['walls'].get('max_step')     # (off unless asked for: it leaves holes where a passage really does step down)
             cut = 0
             meshes = read_lox_walls(lox)
+            leave = [x.lower() for x in cave['walls'].get('leave_out', [])]
+            if leave:
+                # (walls.leave_out: surveys whose drawings make poor walls, left out)
+                from caveviewer.formats import lox_wall_surveys
+                inside = lambda sv: any(f'.{x}.' in f'.{sv.lower()}.' for x in leave)
+                keep = [not inside(sv) for sv in lox_wall_surveys(lox)]
+                meshes = [m for m, k in zip(meshes, keep) if k]
             if cave['walls'].get('heights', 'survey' if cave['walls'].get('type') == 'therion' else 'lox') == 'survey':
                 meshes = fit_walls(meshes, legs)
-            for pts, tris in meshes:
+            gaps = bridges(meshes, legs)
+            for m, (pts, tris) in enumerate(meshes):
                 base = len(wall_pos) // 3
                 for p in pts:
                     wall_pos += rel(p)
-                for t in tris:
+                for k, t in enumerate(tris):
+                    if (m, k) in gaps:
+                        continue
                     if max_step and steep(pts, t, max_step):
                         cut += 1
                         continue
                     wall_idx += [base + i for i in t]
             if cut:
                 print(f'walls: left out {cut} steep triangles (curtains between levels)', file=sys.stderr)
+            if gaps:
+                print(f'walls: left out {len(gaps)} triangles bridging gaps between passages', file=sys.stderr)
         else:
             print(f'no walls: {lox} is missing', file=sys.stderr)
 
@@ -519,7 +564,7 @@ def build(cfg, cave, out_dir, chromium=None):
     with open(os.path.join(out_dir, 'terrain.bin'), 'wb') as f:
         f.write(heights.tobytes())
     page(cfg, cave, out_dir)
-    offline(out_dir, VIEWER, worker=cave['features']['offline'])
+    offline(out_dir, VIEWER, worker=cave['features']['offline'], name=os.path.normpath(cave['path']).replace(os.sep, '-'))
     print(f'3D view written to {out_dir}: {len(legs)} legs, {len(names)} names, '
           f'{length / 1000:.1f} km, ground {tw}x{th} at {step} m', file=sys.stderr)
     if chromium:

@@ -30,7 +30,10 @@
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "The cave's id: its work folder, its caches' names, its USDZ's name."},
         "name": {"type": "string", "description": "As on its page: GB Cave."},
         "short_name": {"type": "string", "description": "For the home screen. Default: the name without ' Cave' or ' Swallet'."},
-        "path": {"type": "string", "description": "Where its page goes in the site: <out>/<path>/. Default: its id."},
+        "path": {"type": "string", "description": "Where its 3D view goes in the site: <out>/<path>/. Default: its id. With a page, a folder of it (\"<page>/3d\"), so the view's About goes up to the page."},
+        "page": {"type": "string", "description": "Where its landing page goes: <out>/<page>/index.html, as the Swildons survey's homepage: its figures, its 3D view, the sheets to print and the files to download (the files step, for a Therion survey), its surveys by length, and the caves with pages below it. \".\" for the site's root."},
+        "lede": {"type": "string", "description": "HTML: a line under its name on its landing page."},
+        "titles": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Survey name -> its name on the landing page's list of surveys, where Therion's title isn't the one to show."},
         "area": {"type": "string", "description": "Where it is, under its name: Blackdown, Charterhouse."},
         "credit": {"type": "string", "description": "The survey's credit, HTML: on its page, the printed route card, the drawn survey's meta.json and the landing page."},
         "data": {
@@ -82,7 +85,8 @@
           "type": "object",
           "properties": {
             "labels": {"type": "boolean", "default": true, "description": "For a Therion survey, the drawing's labels become place names. false: the entrances (and the config's places) only, as for a whole catchment."},
-            "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."}
+            "file": {"type": "string", "description": "A names.json in the repo to start from: any of the keys below, which the cave's own config then adds to or replaces."},
+            "entrances": {"type": "object", "additionalProperties": {"$ref": "#/$defs/place"}, "description": "Entrance station -> name, over the entrances found (the survey's flags, or entrances): renaming one, or adding one the survey doesn't flag. Unlike entrances, it keeps the rest."}
           }
         },
         "entrances": {"type": "object", "additionalProperties": {"$ref": "#/$defs/place"}, "description": "Entrance station -> name, in order (the first is the page's grid reference). Default: the stations the survey flags as entrances."},
@@ -146,7 +150,8 @@
             "type": {"const": "therion", "description": "Walls built by Therion from a Therion survey's drawings, not from its splays: the survey step exports them to <work>/<cave>/walls.lox."},
             "lox": {"type": "string", "description": "A Therion .lox file with the passage walls, already in the repo."},
             "heights": {"enum": ["survey", "lox"], "description": "survey (the default for walls from the drawings): walls more than 3 m above or below their leg are put back on it, and roofs and floors are pushed out to reach the splays at its stations. lox (the default for a .lox in the repo): the walls as they are."},
-            "max_step": {"type": ["number", "null"], "description": "Metres: wall triangles taller than this and much taller than they are wide are left out, as curtains Therion draws between passages at different levels in one drawing. Off by default: it also leaves holes where a passage really does step down."}
+            "max_step": {"type": ["number", "null"], "description": "Metres: wall triangles taller than this and much taller than they are wide are left out, as curtains Therion draws between passages at different levels in one drawing. Off by default: it also leaves holes where a passage really does step down."},
+            "leave_out": {"type": "array", "items": {"type": "string"}, "description": "Surveys whose walls are left out (any level of a survey's dotted name: Longwood takes CheddarCatchment.Longwood and all in it), where a drawing makes poor walls: one scrap over a whole cave, say."}
           },
           "description": "Passage walls, where there are any: {\"type\": \"therion\"} for walls from a Therion survey's drawings, or {\"lox\": path} for a .lox in the repo."
         },
@@ -163,7 +168,8 @@
             "drawn": {"type": "boolean", "default": true, "description": "The drawn survey (2D plan)."},
             "walls": {"type": "boolean", "default": true, "description": "Passage walls."},
             "ar": {"type": "boolean", "default": true, "description": "View in AR (USDZ, on an iPhone or iPad)."},
-            "offline": {"type": "boolean", "default": true, "description": "The service worker that keeps the page for use with no signal."}
+            "offline": {"type": "boolean", "default": true, "description": "The service worker that keeps the page for use with no signal."},
+            "files": {"type": "boolean", "default": true, "description": "For a cave with a page and a Therion survey: the files step's downloads (the plan to print, models, KML, Therion's lists)."}
           },
           "additionalProperties": false
         }

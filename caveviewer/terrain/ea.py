@@ -23,7 +23,7 @@ def fetch(e0, n0, e1, n1, step):
         return pieces(e0, n0, e1, n1, step)
     w, h = (e1 - e0) // step, (n1 - n0) // step
     print(f'fetching LiDAR for {e0},{n0} to {e1},{n1}', file=sys.stderr)
-    tw, th, v, (x0, y0), px = read_tiff(get(WCS.format(e0=e0, e1=e1, n0=n0, n1=n1)))
+    tw, th, v, (x0, y0), px = read_tiff(patiently(WCS.format(e0=e0, e1=e1, n0=n0, n1=n1)))
     if (tw, th, round(x0), round(y0), px) != (e1 - e0, n1 - n0, e0, n1, 1.0):
         raise ValueError(f'unexpected LiDAR grid {tw}x{th} at {x0},{y0} ({px} m)')
     out = array.array('d')
