@@ -261,7 +261,25 @@ FLOOR, CAP = 1.5, 8.0   # metres: the most a wall goes above or below a leg with
 GAP = 15.0        # metres: a wall triangle this wide, all of it this far from any leg in plan, bridges a gap
 
 
-def fit_walls(walls, legs):
+def own_legs(surveys, legs, stations):
+    """For each wall mesh, from the survey it's in (lox_wall_surveys), which of
+    legs' survey legs (as fit_walls counts them) are in that survey or one
+    inside it, by the names of the stations at their ends."""
+    import numpy as np
+    at = {}
+    for nm, p, f in stations:
+        at.setdefault(tuple(np.round(p, 2)), []).append(nm)
+    seg = [(a, b) for a, b, f in legs if not f & 5 and a != b]
+    names = [at.get(tuple(np.round(a, 2)), []) + at.get(tuple(np.round(b, 2)), []) for a, b in seg]
+    out, done = [], {}
+    for sv in surveys:
+        if sv not in done:
+            done[sv] = np.array([any(n.startswith(sv + '.') for n in ns) for ns in names], bool)
+        out.append(done[sv])
+    return out
+
+
+def fit_walls(walls, legs, own=None):
     """Walls built from plan drawings, put back on the survey. A plan has no
     heights, so Therion guesses them, and where a drawing covers passages at
     different levels some walls end up metres above or below their passage.
@@ -274,7 +292,14 @@ def fit_walls(walls, legs):
     brought in). And no point goes further from its leg than the splays
     reach (SLACK past them), or, with no splays, than twice as far as most of
     the leg's walls go (FLOOR to CAP metres): Therion puts a few points of
-    some drawings tens of metres off."""
+    some drawings tens of metres off.
+
+    own (from own_legs): for each mesh, the legs of the survey it's drawn in.
+    Its points are hung from those, where it has any, or from another
+    survey's leg only at Therion's height (within MOVED): under a steep
+    passage's drawing, a passage of another survey at another level can be
+    nearer in plan than the steep one's own legs, and the walls were hung
+    from that, slabs tens of metres tall where there's no passage."""
     import numpy as np
     seg = [(a, b) for a, b, f in legs if not f & 5 and a != b]
     if not seg or not walls:
@@ -291,6 +316,10 @@ def fit_walls(walls, legs):
             reach[k] = (max(up, b[2] - a[2]), max(down, a[2] - b[2]))
     ends = [[reach.get(tuple(np.round(p, 2))) for p in (a, b)] for a, b in seg]
     pts = np.array([p for ps, ts in walls for p in ps], float)
+    # which legs each point may hang from: its mesh's own survey's, where it has any
+    if own is not None:
+        masks = np.array([m if len(m) == len(seg) and m.any() else np.ones(len(seg), bool) for m in own], bool)
+        mesh = np.repeat(np.arange(len(walls)), [len(ps) for ps, ts in walls])
     AB = B - A
     L2 = np.maximum((AB[:, :2] ** 2).sum(1), 1e-9)
     leg, at, zc = np.zeros(len(pts), int), np.zeros(len(pts)), np.zeros(len(pts))
@@ -301,6 +330,13 @@ def fit_walls(walls, legs):
         d = np.hypot(*(P[:, None, :2] - C[..., :2]).transpose(2, 0, 1))
         dz = np.abs(P[:, None, 2] - C[..., 2])
         near = d <= d.min(1, keepdims=True) + 1.5          # (passages at other levels, nearly as near in plan)
+        if own is not None:
+            # its own survey's legs, those nearly as near as the nearest of them; and
+            # another survey's only where it's at Therion's height (a drawing's end
+            # over the passage it joins), never one at another level beneath it
+            mine = masks[mesh[i0:i0 + 2000]]
+            dm = np.where(mine, d, np.inf)
+            near = (mine & (dm <= dm.min(1, keepdims=True) + 1.5)) | (~mine & near & (dz <= MOVED))
         j = np.where(near, dz, np.inf).argmin(1)
         r = np.arange(len(P))
         leg[i0:i0 + 2000], at[i0:i0 + 2000], zc[i0:i0 + 2000] = j, t[r, j], C[r, j, 2]
@@ -447,15 +483,17 @@ def build(cfg, cave, out_dir, chromium=None):
             max_step = cave['walls'].get('max_step')     # (off unless asked for: it leaves holes where a passage really does step down)
             cut = 0
             meshes = read_lox_walls(lox)
+            from caveviewer.formats import lox_wall_surveys
+            surveys = lox_wall_surveys(lox)
             leave = [x.lower() for x in cave['walls'].get('leave_out', [])]
             if leave:
                 # (walls.leave_out: surveys whose drawings make poor walls, left out)
-                from caveviewer.formats import lox_wall_surveys
                 inside = lambda sv: any(f'.{x}.' in f'.{sv.lower()}.' for x in leave)
-                keep = [not inside(sv) for sv in lox_wall_surveys(lox)]
+                keep = [not inside(sv) for sv in surveys]
                 meshes = [m for m, k in zip(meshes, keep) if k]
+                surveys = [sv for sv, k in zip(surveys, keep) if k]
             if cave['walls'].get('heights', 'survey' if cave['walls'].get('type') == 'therion' else 'lox') == 'survey':
-                meshes = fit_walls(meshes, legs)
+                meshes = fit_walls(meshes, legs, own_legs(surveys, legs, stations) if len(surveys) == len(meshes) else None)
             gaps = bridges(meshes, legs)
             for m, (pts, tris) in enumerate(meshes):
                 base = len(wall_pos) // 3

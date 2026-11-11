@@ -155,6 +155,45 @@ class Walls(unittest.TestCase):
         self.assertAlmostEqual(min(z), -1, places=3)       # (no splay down: the floor stays)
 
 
+class WallsOwnSurvey(unittest.TestCase):
+    """A steep passage's walls stay on its own legs, not on another survey's
+    passage beneath it that's nearer in plan (scene.own_legs, scene.fit_walls)."""
+    def setUp(self):
+        # a rift dropping 20 m north (its own survey, A), over a passage of
+        # another survey (B) 30 m below that runs straight under its walls
+        self.stations = [('S.A.1', (0, 0, 0), 2), ('S.A.2', (0, 4, -20), 2),
+                         ('S.B.1', (-10, 6, -30), 2), ('S.B.2', (10, 6, -30), 2)]
+        at = dict((n, p) for n, p, f in self.stations)
+        self.legs = [(at['S.A.1'], at['S.A.2'], 0), (at['S.B.1'], at['S.B.2'], 0)]
+        # the rift's drawing reaches a couple of metres past its end, over B
+        pts = [(x, y, -20 + z) for x in (-1, 1) for y in (4, 6) for z in (-1, 1)]
+        self.walls = [(pts, [(0, 1, 2), (1, 2, 3)])]
+
+    def test_kept_on_its_own_legs(self):
+        from caveviewer.scene import fit_walls, own_legs
+        own = own_legs(['S.A'], self.legs, self.stations)
+        self.assertEqual(own[0].tolist(), [True, False])
+        z = [p[2] for p in fit_walls(self.walls, self.legs, own)[0][0]]
+        self.assertGreater(min(z), -23)
+
+    def test_without_it_hung_on_the_passage_beneath(self):
+        from caveviewer.scene import fit_walls
+        z = [p[2] for p in fit_walls(self.walls, self.legs)[0][0]]
+        self.assertLess(min(z), -28)        # (what it did: the slab)
+
+    def test_another_survey_at_its_height(self):
+        from caveviewer.scene import fit_walls, own_legs
+        # B at the rift's foot: the drawing's end over it may hang from it
+        stations = self.stations[:2] + [('S.B.1', (-10, 6, -20), 2), ('S.B.2', (10, 6, -20), 2)]
+        at = dict((n, p) for n, p, f in stations)
+        legs = [self.legs[0], (at['S.B.1'], at['S.B.2'], 0)]
+        own = own_legs(['S.A'], legs, stations)
+        pts = [(x, 6, -20 + z) for x in (-1, 1) for z in (-1, 1)]
+        z = [p[2] for p in fit_walls([(pts, [(0, 1, 2)])], legs, own)[0][0]]
+        self.assertAlmostEqual(min(z), -21, places=3)
+        self.assertAlmostEqual(max(z), -19, places=3)
+
+
 class WallBridges(unittest.TestCase):
     """A wall triangle spanning the gap between two unconnected passages is left out (scene.bridges)."""
     def test_fin_across_a_gap(self):
