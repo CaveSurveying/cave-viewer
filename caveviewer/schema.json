@@ -30,7 +30,10 @@
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "The cave's id: its work folder, its caches' names, its USDZ's name."},
         "name": {"type": "string", "description": "As on its page: GB Cave."},
         "short_name": {"type": "string", "description": "For the home screen. Default: the name without ' Cave' or ' Swallet'."},
-        "path": {"type": "string", "description": "Where its page goes in the site: <out>/<path>/. Default: its id."},
+        "path": {"type": "string", "description": "Where its 3D view goes in the site: <out>/<path>/. Default: its id. With a page, a folder of it (\"<page>/3d\"), so the view's About goes up to the page."},
+        "page": {"type": "string", "description": "Where its landing page goes: <out>/<page>/index.html, as the Swildons survey's homepage: its figures, its 3D view, the sheets to print and the files to download (the files step, for a Therion survey), its surveys by length, and the caves with pages below it. \".\" for the site's root."},
+        "lede": {"type": "string", "description": "HTML: a line under its name on its landing page."},
+        "titles": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Survey name -> its name on the landing page's list of surveys, where Therion's title isn't the one to show."},
         "area": {"type": "string", "description": "Where it is, under its name: Blackdown, Charterhouse."},
         "credit": {"type": "string", "description": "The survey's credit, HTML: on its page, the printed route card, the drawn survey's meta.json and the landing page."},
         "data": {
@@ -165,7 +168,8 @@
             "drawn": {"type": "boolean", "default": true, "description": "The drawn survey (2D plan)."},
             "walls": {"type": "boolean", "default": true, "description": "Passage walls."},
             "ar": {"type": "boolean", "default": true, "description": "View in AR (USDZ, on an iPhone or iPad)."},
-            "offline": {"type": "boolean", "default": true, "description": "The service worker that keeps the page for use with no signal."}
+            "offline": {"type": "boolean", "default": true, "description": "The service worker that keeps the page for use with no signal."},
+            "files": {"type": "boolean", "default": true, "description": "For a cave with a page and a Therion survey: the files step's downloads (the plan to print, models, KML, Therion's lists)."}
           },
           "additionalProperties": false
         }

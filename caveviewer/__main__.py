@@ -11,7 +11,9 @@ The steps, in order:
     survey   each cave's centreline and names, in the work folder (Therion builds it, or a Survex .3d)
     model    each cave's 3D view in <out>/<path>/ (scene.json, terrain.bin, index.html, offline files)
     drawn    each cave's drawn survey, for its 2D plan, in <out>/<path>/drawn/
-    index    the landing page, <out>/index.html (where site.index is on: by default, for several caves)
+    files    for a cave with a page, what Therion makes of it to download, in <out>/<page>/files/
+    index    each cave's landing page, <out>/<page>/index.html (where it has a page), and the site's,
+             <out>/index.html (where site.index is on: by default, for several caves)
 
 Set CHROMIUM to a Chrome or Chromium binary for each cave's preview.png
 (and for Therion drawings, where Chrome isn't in the usual place on a Mac).
@@ -23,14 +25,14 @@ import sys
 from caveviewer import __version__
 from caveviewer.config import Config, ConfigError
 
-STEPS = ('survey', 'model', 'drawn', 'index')
+STEPS = ('survey', 'model', 'drawn', 'files', 'index')
 
 
 def build(cfg, out, only=(), steps=STEPS, fetch=True, chromium=None):
     caves = [c for c in cfg.caves if not only or c['id'] in only]
     if only and len(caves) != len(set(only)):
         raise ConfigError(f'no cave {sorted(set(only) - {c["id"] for c in caves})} in {cfg.path}')
-    from caveviewer import drawn, index, scene, survey
+    from caveviewer import drawn, files, index, pages, scene, survey
     failed = []
     if 'survey' in steps:
         failed = [c['id'] for c in caves if not survey.build(cfg, c, fetch)]
@@ -42,6 +44,12 @@ def build(cfg, out, only=(), steps=STEPS, fetch=True, chromium=None):
         for c in caves:
             if c['features']['drawn']:
                 drawn.build(cfg, c, os.path.join(out, c['path']), chromium)
+    if 'files' in steps:
+        for c in caves:
+            if c['features']['files']:
+                files.build(cfg, c, out)
+    if 'index' in steps:
+        pages.build(cfg, cfg.caves, out)
     if 'index' in steps and cfg.site['index']:
         with open(os.path.join(out, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(index.page(cfg.site, cfg.caves, out))

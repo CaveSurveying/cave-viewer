@@ -564,7 +564,7 @@ def build(cfg, cave, out_dir, chromium=None):
     with open(os.path.join(out_dir, 'terrain.bin'), 'wb') as f:
         f.write(heights.tobytes())
     page(cfg, cave, out_dir)
-    offline(out_dir, VIEWER, worker=cave['features']['offline'])
+    offline(out_dir, VIEWER, worker=cave['features']['offline'], name=os.path.normpath(cave['path']).replace(os.sep, '-'))
     print(f'3D view written to {out_dir}: {len(legs)} legs, {len(names)} names, '
           f'{length / 1000:.1f} km, ground {tw}x{th} at {step} m', file=sys.stderr)
     if chromium:

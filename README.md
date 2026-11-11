@@ -182,8 +182,17 @@ those caves.
    service worker (`sw.js`, with caches of its own per cave).
 3. **drawn**: the drawn survey for the 2D plan, as tiles in
    `<site>/<path>/drawn/`.
-4. **index**: the landing page `<site>/index.html`, for a repo of several
-   caves.
+4. **files**: for a cave with a `page` and a Therion survey, what Therion
+   makes of it to download, in `<site>/<page>/files/`: the plan to print
+   (PDF, with a picture of it), the centreline and model (`.3d`, `.lox`),
+   the plan as SVG, KML for Google Earth, and Therion's survey, cave and
+   continuation lists.
+5. **index**: each cave's landing page, `<site>/<page>/index.html`, as the
+   Swildons survey's homepage is: its figures, its 3D view, its sheets and
+   files, its surveys by length (each a link into the 3D view), and the
+   caves with pages below it. And `<site>/index.html` for a repo of several
+   caves, where `site.index` is on. A cave with a page has its 3D view in a
+   folder of it (`"path": "<page>/3d"`), so the view's About goes up to it.
 
 `python -m caveviewer check <config>` reads the config and says what it
 would build; `python -m caveviewer fit <config>` fits a scanned drawing to

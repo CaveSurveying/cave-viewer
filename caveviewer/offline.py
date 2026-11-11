@@ -5,7 +5,7 @@ import os
 import shutil
 
 
-def offline(out_dir, here, worker=True):
+def offline(out_dir, here, worker=True, name=None):
     """What the page needs to work with no signal: three.js and the font from
     vendor/ (rather than from the internet), the app's manifest and icons, and
     a service worker that keeps all of it, listed and versioned by content."""
@@ -37,6 +37,8 @@ def offline(out_dir, here, worker=True):
         h.update(open(os.path.join(out_dir, f), 'rb').read())
     sw = open(os.path.join(here, 'static', 'sw.js')).read()
     sw = sw.replace("'__VERSION__'", repr(h.hexdigest()[:12])).replace('__FILES__', json.dumps(files, indent=2))
-    sw = sw.replace('__ID__', os.path.basename(os.path.normpath(out_dir)))    # (each cave's caches its own: the caves share a site)
+    # (each cave's caches its own, as the caves share a site: named by where it is in the
+    # site, as caves with landing pages all have their 3D views in folders named 3d)
+    sw = sw.replace('__ID__', name or os.path.basename(os.path.normpath(out_dir)))
     with open(os.path.join(out_dir, 'sw.js'), 'w') as f:
         f.write(sw)

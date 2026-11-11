@@ -175,7 +175,7 @@ jobs:
       - name: Build ${{ matrix.id }}
         env:
           CHROMIUM: ${{ inputs.preview && '/usr/bin/google-chrome' || '' }}
-        run: python -m caveviewer build "${{ inputs.config }}" "${{ matrix.id }}" --out "${{ inputs.out }}" --steps survey,model,drawn ${{ inputs.build-args }}
+        run: python -m caveviewer build "${{ inputs.config }}" "${{ matrix.id }}" --out "${{ inputs.out }}" --steps survey,model,drawn,files ${{ inputs.build-args }}
       - uses: actions/upload-artifact@v4
         with:
           name: cave-${{ matrix.id }}
@@ -199,7 +199,7 @@ jobs:
           cache: pip
       - name: Install cave-viewer (as requirements.txt pins it)
         run: pip install -r requirements.txt
-      - name: The landing page (where there is one)
+      - name: The landing pages (where there are any)
         run: python -m caveviewer build "${{ inputs.config }}" --out "${{ inputs.out }}" --steps index
       - uses: actions/upload-pages-artifact@v3
         with:
