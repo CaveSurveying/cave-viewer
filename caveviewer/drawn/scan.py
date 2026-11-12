@@ -42,7 +42,13 @@ def tile(geo, arr, k, origin, x0, y0, res):
     X, Y = np.meshgrid(x0 + i, y0 - i)
     px, py = geo.to_px(X + origin[0], Y + origin[1])
     rgb = sample(arr, px / k, py / k)
-    ink = (rgb.min(axis=2) < 225).mean()
+    # the ink on the paper in it, not over the whole tile: a small cave's
+    # drawing (a sheet of a few tens of metres) is a speck in a 512 m tile
+    h, w = arr.shape[:2]
+    paper = (px / k >= 0) & (py / k >= 0) & (px / k < w - 1) & (py / k < h - 1)
+    if not paper.any():
+        return None
+    ink = (rgb[paper].min(axis=1) < 225).mean()
     return None if ink < 0.002 else Image.fromarray(rgb.clip(0, 255).astype(np.uint8))
 
 
