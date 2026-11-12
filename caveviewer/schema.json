@@ -33,6 +33,8 @@
         "path": {"type": "string", "description": "Where its 3D view goes in the site: <out>/<path>/. Default: its id. With a page, a folder of it (\"<page>/3d\"), so the view's About goes up to the page."},
         "page": {"type": "string", "description": "Where its landing page goes: <out>/<page>/index.html, as the Swildons survey's homepage: its figures, its 3D view, the sheets to print and the files to download (the files step, for a Therion survey), its surveys by length, and the caves with pages below it. \".\" for the site's root."},
         "lede": {"type": "string", "description": "HTML: a line under its name on its landing page."},
+        "notice": {"type": "string", "description": "HTML: a short warning shown at the top of its landing page and in its 3D view's title card, for what anyone using it should know first: that the survey isn't the whole cave, say."},
+        "about": {"type": "string", "description": "A Markdown file in the repo (from the config's folder): the cave's notes, as a section of its landing page. Headings, paragraphs, lists, quotes, links, bold, italic and code; HTML in it is shown as text."},
         "titles": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Survey name -> its name on the landing page's list of surveys, where Therion's title isn't the one to show."},
         "area": {"type": "string", "description": "Where it is, under its name: Blackdown, Charterhouse."},
         "credit": {"type": "string", "description": "The survey's credit, HTML: on its page, the printed route card, the drawn survey's meta.json and the landing page."},

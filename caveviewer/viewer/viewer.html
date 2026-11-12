@@ -42,6 +42,11 @@
   #title { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 16px; padding: 14px 18px 14px; max-width: calc(100vw - 32px); }
   #title h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
   #title p { margin: 2px 0 10px; color: var(--muted); font-size: 13px; }
+  /* the config's notice: what to know first (that it isn't the whole cave, say) */
+  #title #t-notice { max-width: 420px; margin: -4px 0 10px; padding: 6px 10px; color: var(--text); font-size: 12px; line-height: 1.4;
+    border-left: 3px solid #e0a83a; background: rgba(224, 168, 58, .14); border-radius: 4px; }
+  #title #t-notice:empty { display: none; }
+  #title #t-notice a { color: inherit; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, .06);
     border: 1px solid rgba(255, 255, 255, .08); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -320,6 +325,7 @@
   <a class="back" href="../">&larr; About</a>
   <h1><span id="t-name">{{NAME}}</span></h1>
   <p id="t-sub">{{AREA}} &middot; cave survey in 3D</p>
+  <p id="t-notice">{{NOTICE}}</p>
   <div class="chips" id="chips"></div>
   <button id="r-open" class="chip rbtn" title="Find the way between two places in the cave">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>

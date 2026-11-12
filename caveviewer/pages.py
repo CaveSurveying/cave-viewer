@@ -85,6 +85,11 @@ def page(cfg, cave, caves, out):
 <p>{ground}{' Passage walls come from the survey drawings.' if cave['walls'] else ''}{' Pick two places in the cave to see the way between them.' if cave['features']['routes'] else ''}</p>
 <p class="note">Drag to turn it, scroll or pinch to zoom. Once opened it works offline. It also works in AR on an iPhone or iPad, and in AR or VR on any device whose browser supports WebXR, such as an Android phone or a headset.</p>
 <p>{' '.join(links)}</p></div></div></section>''')
+    # the cave's own notes (the config's about: Markdown)
+    if cave.get('about'):
+        from caveviewer.markdown import to_html
+        doc = open(cfg.at(cave['about']), encoding='utf-8').read()
+        parts.append(f'<section class="about"><h2>About</h2>{to_html(doc, top=3)}</section>')
     # sheets
     sheets = [f for f in fs['files'] if f['kind'] == 'sheet']
     if sheets:
@@ -141,6 +146,10 @@ def page(cfg, cave, caves, out):
   .up {{ display: inline-block; margin-bottom: 14px; color: var(--muted); text-decoration: none; font-size: 13px; }}
   h1 {{ margin: 0 0 4px; font-size: 32px; letter-spacing: -.02em; }}
   .lede {{ margin: 0 0 24px; color: var(--muted); max-width: 720px; }}
+  .notice {{ margin: -8px 0 24px; padding: 10px 14px; max-width: 720px; border-left: 3px solid #e0a83a; background: rgba(224, 168, 58, .1); border-radius: 4px; }}
+  .about {{ max-width: 720px; }}
+  .about p, .about li {{ line-height: 1.55; }}
+  .about blockquote {{ margin: 0 0 0 4px; padding-left: 14px; border-left: 2px solid var(--line); color: var(--muted); }}
   .stats {{ display: flex; flex-wrap: wrap; gap: 14px 32px; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }}
   .stats span {{ display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }}
   .stats b {{ font-weight: 600; }}
@@ -177,6 +186,7 @@ def page(cfg, cave, caves, out):
 {up}
 <h1>{E(cave['name'])}</h1>
 <p class="lede">{E(cave['area'])}{' &middot; ' + cave['lede'] if cave.get('lede') else ''}</p>
+{f'<p class="notice">{cave["notice"]}</p>' if cave.get('notice') else ''}
 <div class="stats">{stats}</div>
 {chr(10).join(parts)}
 <footer>Survey: {cave['credit']}{source} &middot; {CREDITS.get(cave['terrain']['type'], '')} Imagery: Esri &middot; Built by <a href="https://github.com/CaveSurveying/cave-viewer">cave-viewer</a> from the survey data; every push rebuilds it.</footer>
