@@ -618,7 +618,8 @@ def page(cfg, cave, out_dir):
     ground_credit = cave['terrain'].get('credit', CREDITS[cave['terrain']['type']])
     words = {'NAME': html.escape(cave['name']), 'AREA': html.escape(cave['area']), 'ID': cave['id'],
              'CREDIT': cave['credit'], 'DATA': url, 'DATA_HTML': data_html, 'GROUND_CREDIT': ground_credit,
-             'DRAWN_CREDIT': dr.get('page_credit', DRAWN_CREDITS[dr['type']])}
+             'DRAWN_CREDIT': dr.get('page_credit', DRAWN_CREDITS[dr['type']]),
+             'NOTICE': cave.get('notice', '')}
     text = open(os.path.join(VIEWER, 'viewer.html'), encoding='utf-8').read()
     for k, v in words.items():
         text = text.replace('{{' + k + '}}', v)

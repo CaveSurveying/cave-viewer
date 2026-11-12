@@ -286,6 +286,12 @@ folder.
    says so with `"grid": {"crs": "itm"}`, and takes `"terrain": {"type":
    "copernicus"}` for its ground.
 
+   A cave can carry its own words: `"notice"`, a short warning shown at the
+   top of its landing page and in its 3D view's title card (`"Only the
+   entrance series is surveyed: the rest of the cave isn't shown."`), and
+   `"about"`, a Markdown file of notes for its landing page (where the data
+   comes from, what's missing, where to find a fuller survey).
+
 3. Install and build:
 
    ```bash
