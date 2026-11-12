@@ -123,7 +123,10 @@ KINDS = {'aven', 'air bell', 'boulder choke', 'choke', 'clay choke', 'call', 'ea
 
 
 def name_like(t):
-    return t[0].isupper() and not NOTE.search(t) and t.lower() not in KINDS
+    # (and not a sentence: a note on the sheet, as Tween Twins' "Cross-sections at the same
+    # scale as the plan and elevation.")
+    sentence = t.rstrip().endswith('.') and len(t.split()) > 4
+    return t[0].isupper() and not NOTE.search(t) and t.lower() not in KINDS and not sentence
 
 
 def names(cfg, cave):
