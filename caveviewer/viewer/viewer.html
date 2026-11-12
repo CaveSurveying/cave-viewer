@@ -2419,6 +2419,9 @@ const nearestNode = p => { let best = 0, bd = Infinity; for (let i = 0; i < GN; 
 const ENTS = S.names.filter(n => n.entrance && !n.apart).map(n => n.t);
 const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: nearestNode(n.at || n.p), sys: n.sys }))
   .sort((a, b) => ((ENTS.indexOf(a.name) + 1 || 99) - (ENTS.indexOf(b.name) + 1 || 99)) || a.name.localeCompare(b.name));
+// with fewer than two places there's nowhere to route between: no Routes
+// (a route in a shared address still opens, from 'Here (stn …)')
+if (PLACES.length < 2) $('r-open').style.display = 'none';
 
 const HERE = new Map();          // 'Here (stn …)' -> station
 // a named place, or 'Here (stn …)' from a reroute (also from a shared address, so by station name)
