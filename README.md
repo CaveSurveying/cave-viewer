@@ -77,7 +77,8 @@ top right), with the cave's own place names on them.
 
 **Routes** finds the way between any two places, along the passages: the
 shortest, keeping to the usual ways (the config's `ways`) and away from what it
-says to avoid, and through a sump only if there's no other way.
+says to avoid, and through a sump only if there's no other way. A cave with fewer than two
+named places (one entrance and no names, say) has no Routes button.
 
 - **Type to find a place.** From and To match anywhere in the name, entrances
   first. To lists only the places joined to From underground, so in a whole
