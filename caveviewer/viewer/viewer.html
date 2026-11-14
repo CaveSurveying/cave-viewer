@@ -165,7 +165,7 @@
   #route .x.ico svg { width: 15px; height: 15px; }
   .row label small { color: var(--muted); font-size: 11px; }
   /* minmax(0, 1fr): a long entrance name mustn't widen the column past the panel */
-  #route .pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 6px 8px; align-items: center; }
+  #route .pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; }
   #route .pick label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
   #route .pick label span { width: 30px; flex: none; }
   #route .pick .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -194,6 +194,24 @@
   #r-swap { grid-row: 1 / 3; grid-column: 2; width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .07);
     border: 1px solid rgba(255, 255, 255, .12); color: var(--text); cursor: pointer; font-size: 15px; }
   #r-swap:hover { background: rgba(255, 255, 255, .15); }
+  #route .x.ico.done { color: #4fd18b; }
+  /* the stops between From and To, in turn; with some, the swap button spans them too */
+  #r-vias { grid-column: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  #r-vias:empty { display: none; }
+  .pick.has-vias #r-swap { grid-row: 1 / 4; }
+  #r-vias .via { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
+  #r-vias .via > span:nth-child(2) { width: 30px; flex: none; }
+  #r-vias .vb { flex: none; width: 24px; height: 26px; border-radius: 7px; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0; }
+  #r-vias .vb:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+  #r-vias .vb:disabled { visibility: hidden; }
+  #route .rtools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: -2px; }
+  #route .rtools button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 12px; padding: 0 2px; cursor: pointer; }
+  #route .rtools button:hover { color: #fff; }
+  #route .rtools label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  #route .rtools label[hidden] { display: none; }
+  #r-steps li.k-via .i { background: #ffd27a; color: #2a1d05; }
+  canvas#view.on-route { cursor: grab; }
+  canvas#view.dragging-route { cursor: grabbing; }
   #r-prof { width: 100%; height: 96px; display: block; cursor: crosshair; flex: none; }
   #r-prof text { font: 10px Inter, system-ui, sans-serif; fill: var(--muted); }
   #r-card { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: 10px; background: rgba(255, 255, 255, .06);
@@ -364,13 +382,15 @@
 
 <div id="route" class="glass" hidden aria-label="Route">
   <div class="grab" id="r-grab" role="button" tabindex="0" aria-label="Pull up for more of the route, or down for less"><span></span></div>
-  <div class="rhead"><h2 id="r-head" title="Show or hide the route details"><span class="full">Route</span><span class="ends" id="r-ends"></span></h2><span class="rbtns"><button class="x ico" id="r-print" title="Print this route as a card" aria-label="Print the route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg></button><button class="x" id="r-close" title="Close the route" aria-label="Close the route">&times;</button></span></div>
+  <div class="rhead"><h2 id="r-head" title="Show or hide the route details"><span class="full">Route</span><span class="ends" id="r-ends"></span></h2><span class="rbtns"><button class="x ico" id="r-print" title="Print this route as a card" aria-label="Print the route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg></button><button class="x ico" id="r-link" title="Copy a link to this route" aria-label="Copy a link to this route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></button><button class="x" id="r-close" title="Close the route" aria-label="Close the route">&times;</button></span></div>
   <div class="pick">
     <label><span class="dot" style="background:#4fd18b"></span><span>From</span><div class="combo"><input id="r-from" autocomplete="off" spellcheck="false" aria-label="From" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-from-opts" role="listbox" hidden></div></div></label>
     <button id="r-swap" title="Swap" aria-label="Swap the ends">&#8645;</button>
+    <div id="r-vias"></div>
     <label><span class="dot" style="background:#ff6b6b"></span><span>To</span><div class="combo"><input id="r-to" autocomplete="off" spellcheck="false" aria-label="To" role="combobox" aria-autocomplete="list" aria-expanded="false"><div class="opts" id="r-to-opts" role="listbox" hidden></div></div></label>
     <label class="trip" id="r-trip-row" hidden><span class="dot" style="background:#ffd27a"></span><span>Trip</span><select id="r-trip"></select></label>
   </div>
+  <div class="rtools"><button id="r-addvia" title="Go through somewhere on the way (or drag the route on the 3D view)">+ Add a stop</button><button id="r-round" title="Come back to where you started">&#8635; Round trip</button><label id="r-another-row" hidden title="Where the way back could retrace the way there, take another way if there's a sensible one"><input type="checkbox" id="r-another"> Come back another way</label></div>
   <div class="chips" id="r-stats"></div>
   <svg id="r-prof" aria-label="Height along the route"></svg>
   <div id="r-card">
@@ -2429,15 +2449,30 @@ const PLACES = S.names.filter(n => !n.apart).map(n => ({ name: n.t, node: neares
 // (a route in a shared address still opens, from 'Here (stn …)')
 if (PLACES.length < 2) $('r-open').style.display = 'none';
 
-const HERE = new Map();          // 'Here (stn …)' -> station
-// a named place, or 'Here (stn …)' from a reroute (also from a shared address, so by station name)
+const HERE = new Map();          // '… (stn …)' -> station
+// A stop anywhere in the survey: by its station, with its passage's name to read,
+// 'Gour Passage (stn 208@G4)' (or 'Here (stn …)', from a reroute). A link keeps
+// working when the survey changes: if the station has gone, the place or
+// passage its name begins with stands in for it.
+const stnOf = i => G.stn?.[i] || `#${i}`;
+const stationName = i => `${passageOf(i) || 'Station'} (stn ${stnOf(i)})`;
+// what to call a stop dropped on station i: the place there if there's one
+const stopName = i => PLACES.find(p => p.node === i)?.name || stationName(i);
+// a named place, or a station as above
 function placeBy(name) {
+  if (!name) return null;
   const p = PLACES.find(p => p.name === name);
   if (p) return p;
   if (!HERE.has(name)) {
-    const m = /^Here \(stn (.+)\)$/.exec(name);
-    const i = m ? G.stn.indexOf(m[1]) : -1;
-    if (i < 0) return null;
+    const m = /^(.*) \(stn (.+)\)$/.exec(name);
+    if (!m) return null;
+    let i = /^#\d+$/.test(m[2]) ? +m[2].slice(1) : (G.stn ? G.stn.indexOf(m[2]) : -1);
+    if (!(i >= 0 && i < GN)) {
+      const pl = PLACES.find(p => p.name === m[1]), k = G.passages.indexOf(m[1]);
+      if (pl) i = pl.node;
+      else if (k >= 0) { const on = []; for (let j = 0; j < GN; j++) if (G.passage[j] === k) on.push(j); i = on.length ? on[on.length >> 1] : -1; }
+      if (!(i >= 0)) return null;
+    }
     HERE.set(name, i);
   }
   return { name, node: HERE.get(name) };
@@ -2454,7 +2489,10 @@ const OFFWAY = (G.way || []).length ? G.offway || 1.6 : 1;    // (a cave may ask
 // counts as 20 times as far, as AVOID in caveviewer/scene.py): taken only if
 // there's no reasonable other way
 const SHUN = new Uint8Array(GN); for (const i of G.avoid || []) SHUN[i] = 1;
-function shortest(a, b, dive = false) {
+// (used: the legs already taken, 'a-b' with a < b; with another, they count four
+// times as far, so the way back takes another way where there's a sensible one)
+const legKey = (u, v) => u < v ? `${u}-${v}` : `${v}-${u}`;
+function shortest(a, b, dive = false, used = null) {
   const dist = new Float64Array(GN).fill(Infinity), prev = new Int32Array(GN).fill(-1), heap = [[0, a]];
   const push = x => { heap.push(x); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
   const pop = () => {
@@ -2471,11 +2509,11 @@ function shortest(a, b, dive = false) {
     if (d > dist[u]) continue;
     if (u === b) break;
     for (const [v, c0] of adj[u]) {
-      const c = (ONWAY[u] && ONWAY[v] ? c0 : c0 * OFFWAY) * (SHUN[u] || SHUN[v] ? 20 : 1);
+      const c = (ONWAY[u] && ONWAY[v] ? c0 : c0 * OFFWAY) * (SHUN[u] || SHUN[v] ? 20 : 1) * (used?.has(legKey(u, v)) ? 4 : 1);
       if ((dive || !(WET[u] && WET[v])) && d + c < dist[v]) { dist[v] = d + c; prev[v] = u; push([d + c, v]); }
     }
   }
-  if (!isFinite(dist[b])) return dive ? null : shortest(a, b, true);
+  if (!isFinite(dist[b])) return dive ? null : shortest(a, b, true, used);
   const path = [];
   for (let u = b; u !== -1; u = prev[u]) path.push(u);
   return path.reverse();
@@ -2681,6 +2719,12 @@ function dotSprite(fill, ring = '#fff', size = 0.034) {
 const startDot = dotSprite('#4fd18b', '#fff', 0.024), endDot = dotSprite('#ff6b6b', '#fff', 0.024), hereDot = dotSprite('#7fe3ff', '#fff', 0.028), probeDot = dotSprite('#ffffff', '#ffd27a', 0.016);
 probeDot.visible = false;
 [startDot, endDot, hereDot, probeDot].forEach(o => routeGroup.add(o));
+// the stops on the way, gold, as many as the route has
+const stopDots = [];
+function setStopDots(nodes) {
+  while (stopDots.length < nodes.length) { const d = dotSprite('#ffd27a', '#fff', 0.021); routeGroup.add(d); stopDots.push(d); }
+  stopDots.forEach((d, k) => { d.visible = k < nodes.length; if (d.visible) d.position.copy(lift(gp(nodes[k]))); });
+}
 // the curtain: the route's height profile hung in 3D, from the route down to
 // a little below its lowest point, coloured by altitude and fading downwards
 const curtain = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.ShaderMaterial({
@@ -2720,13 +2764,17 @@ const toWorld = p => { const v = P(p); v.y *= world.scale.y; return v; };
 const toFinal = p => { const v = P(p); v.y *= vsFinal(); return v; };     // (for a view to fly to)
 const toWorldInto = (p, v) => { P(p, v); v.y *= world.scale.y; return v; };
 
-// the route's dashes move for a few seconds after each step, showing the way
-// it goes, then stop, so a phone isn't drawing all the time a route is open
-let dashUntil = 0;
+// the route's dashes keep moving while it's shown, showing the way it goes (not
+// for someone who's asked their device for less motion: then they stay still)
+const STILL_DASHES = matchMedia('(prefers-reduced-motion: reduce)');
+const dashing = () => route && routeGroup.visible && !STILL_DASHES.matches;
 let route = null, steps = [], cur = 0, routeFrom = null, routeTo = null, routeVia = [], onRoute = new Set();
+// another: come back another way, not retracing the way there; legEnds: where on
+// the route each stop is (its index in route.nodes), and the end
+let routeAnother = false, legEnds = [];
 // the route's part of the address
 const routeQuery = () => `from=${encodeURIComponent(routeFrom)}&to=${encodeURIComponent(routeTo)}` +
-  (routeVia.length ? `&via=${routeVia.map(encodeURIComponent).join('|')}` : '');
+  (routeVia.length ? `&via=${routeVia.map(encodeURIComponent).join('|')}` : '') + (routeAnother ? '&another=1' : '');
 const fmtM = m => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
 
 function setLine(line, pts) {
@@ -2807,35 +2855,51 @@ function junctionSvg(s) {
 
 // (via: places to go through on the way, in turn, as a trip does; a round
 // trip starts and ends at the same place)
-function openRoute(fromName, toName, step = 0, fly = true, via = []) {
+function openRoute(fromName, toName, step = 0, fly = true, via = [], another = routeAnother) {
   const a = placeBy(fromName), b = placeBy(toName), stops = via.map(placeBy);
-  if (!a || !b || stops.some(x => !x)) return;
-  routeFrom = fromName; routeTo = toName; routeVia = via;
+  if (!a || !b || stops.some(x => !x)) return false;
+  routeFrom = fromName; routeTo = toName; routeVia = via; routeAnother = another;
   const trip = TRIPS.find(t => t.from === fromName && t.to === toName && t.via.join('|') === via.join('|'));
   $('r-trip').value = trip ? trip.name : '';
   $('r-from').value = fromName; $('r-to').value = toName;
   $('r-from').title = fromName; $('r-to').title = toName;     // the whole name, where the field cuts it short
-  $('r-ends').textContent = trip ? trip.name : `${fromName} \u2192 ${toName}`;
+  $('r-ends').textContent = trip ? trip.name : fromName === toName ? `Round trip from ${fromName}` : `${fromName} \u2192 ${toName}`;
+  renderVias();
+  // each leg in turn, stop to stop; coming back another way, the legs already
+  // taken count as further, so a later leg goes round by another way if there's one
   let path = [a.node];
+  const used = another ? new Set() : null;
+  legEnds = [];
   for (const s of [...stops, b]) {
-    if (s.node === path[path.length - 1]) continue;
-    const leg = shortest(path[path.length - 1], s.node);
-    if (!leg) { path = null; break; }
-    path.push(...leg.slice(1));
+    if (s.node !== path[path.length - 1]) {
+      const leg = shortest(path[path.length - 1], s.node, false, used);
+      if (!leg) { path = null; break; }
+      if (used) for (let i = 1; i < leg.length; i++) used.add(legKey(leg[i - 1], leg[i]));
+      path.push(...leg.slice(1));
+    }
+    legEnds.push(path.length - 1);
   }
   if (path && path.length < 2) path = null;
   $('r-none')?.remove();
   if (!path) {
     route = null; routeGroup.visible = false;
     // (a whole area's data is many systems, joined only over the surface: routes stay underground)
-    const apart = COMP[a.node] !== COMP[b.node];
-    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Pick two different places.'
-      : apart ? `${escHtml(fromName)} and ${escHtml(toName)} aren't joined underground in the survey.`
+    const apart = [...stops, b].some(s => COMP[s.node] !== COMP[a.node]);
+    $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Add a stop to go round, or pick another place.'
+      : apart ? `${escHtml(fromName)} and ${escHtml(toName)}${via.length ? ' and the stops' : ''} aren't joined underground in the survey.`
       : 'No way through the survey between these.'}</span>`;
-    return;
+    return false;
   }
   route = new Route(path);
   steps = route.steps(fromName, toName);
+  if (a.node === b.node) steps[steps.length - 1].text = `Arrive back at ${toName}.`;
+  // each stop on the way, as a step of its own
+  stops.forEach((st, k) => {
+    const i = legEnds[k];
+    if (i <= 0 || i >= path.length - 1) return;
+    steps.push({ i, kind: 'via', turn: null, text: `Reach ${st.name}` + (k + 1 < stops.length ? `, stop ${k + 1} of ${stops.length}.` : stops.length > 1 ? ', the last stop.' : '.'), alts: [] });
+  });
+  steps.sort((x, y) => x.i - y.i || (x.kind === 'end') - (y.kind === 'end') || (x.kind === 'via') - (y.kind === 'via'));
   onRoute = new Set(route.passages().map(([, t]) => t).concat([fromName, toName]));
   const st = route.stats();
   $('r-stats').innerHTML = [
@@ -2848,6 +2912,7 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   setCurtain(path);
   startDot.position.copy(lift(gp(path[0])));
   endDot.position.copy(lift(gp(path[path.length - 1])));
+  setStopDots(legEnds.slice(0, -1).map(i => path[i]));
   routeGroup.visible = true;
   legsWide.material.transparent = true; legsWide.material.opacity = 0.35;
   // number the decisions and drops; passages entered are headings in the list
@@ -2856,7 +2921,7 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
     s.num = s.kind === 'turn' || s.kind === 'drop' ? ++num : null;
     const p = route.passageAt(s.i);
     if (p && p !== here && s.kind !== 'end') { list += `<li class="h">${p}</li>`; here = p; }
-    list += `<li class="k-${s.kind}" data-k="${k}"><span class="i">${s.kind === 'start' ? 'A' : s.kind === 'end' ? 'B' : s.num ?? ''}</span>` +
+    list += `<li class="k-${s.kind}" data-k="${k}"><span class="i">${s.kind === 'start' ? 'A' : s.kind === 'end' ? 'B' : s.kind === 'via' ? '&bull;' : s.num ?? ''}</span>` +
       `<span>${s.text}</span><span class="dd">${fmtM(route.chain[s.i])}</span></li>`;
   });
   steps.count = num;
@@ -2864,6 +2929,7 @@ function openRoute(fromName, toName, step = 0, fly = true, via = []) {
   drawProfile();
   setSpin(false);
   if (step > 0) goStep(Math.min(step, steps.length - 1), fly); else showOverview(fly);
+  return true;
 }
 
 // the open route's view, as things are now (2D or 3D), to fly to when they change, or null
@@ -2922,7 +2988,6 @@ function showOverview(fly = true) {
   stepShown = false;
   document.body.classList.remove('route-step');
   if (!route) return;
-  dashUntil = performance.now() + 4000;
   cur = -1;
   drawProfile();          // (hidden on a step, so it may have had no width to draw to)
   $('r-arrow').removeAttribute('hidden'); $('r-jn').setAttribute('hidden', '');
@@ -2933,7 +2998,7 @@ function showOverview(fly = true) {
   $('r-arrow').style.transform = '';
   $('r-arrow').innerHTML = '<circle cx="7" cy="23" r="3.5" fill="#4fd18b"/><circle cx="23" cy="7" r="3.5" fill="#ff6b6b"/><path d="M10 23 H17 a4 4 0 0 0 0-8 H13 a4 4 0 0 1 0-8 H19" fill="none" stroke="#ffd27a" stroke-width="2.2" stroke-linecap="round"/>';
   $('r-n').textContent = `Whole route · ${steps.count} steps`;
-  $('r-d').textContent = `${routeFrom} to ${routeTo}: ${fmtM(st.length)}, ${Math.round(st.up)} m up and ${Math.round(st.down)} m down, between ${Math.round(st.low)} and ${Math.round(st.high)} m.`;
+  $('r-d').textContent = `${routeFrom === routeTo ? `Round trip from ${routeFrom}` : `${routeFrom} to ${routeTo}`}${routeVia.length ? ` by ${routeVia.length} stop${routeVia.length > 1 ? 's' : ''}` : ''}: ${fmtM(st.length)}, ${Math.round(st.up)} m up and ${Math.round(st.down)} m down, between ${Math.round(st.low)} and ${Math.round(st.high)} m.`;
   $('r-m').innerHTML = names.length && FEATURES.directions ? `Through ${names.map(escHtml).join(' → ')}` : '';
   $('r-prev').disabled = true; $('r-next').disabled = false;
   $('r-steps').querySelectorAll('li.on').forEach(x => x.classList.remove('on'));
@@ -2970,7 +3035,6 @@ function goStep(k, fly = true, whole = false) {
     const d = Math.min(600, Math.max(controls.minDistance, camera.position.distanceTo(controls.target)));
     if (drawn.on) planStepDist = d; else stepDist = d;
   }
-  dashUntil = performance.now() + 4000;
   if (k < 0) { showOverview(fly); return; }
   cur = Math.min(steps.length - 1, k);
   hereDot.visible = true;
@@ -3052,7 +3116,7 @@ function drawProfile() {
   html += `<polyline points="${pts.join(' ')}" fill="none" stroke="url(#pg)" stroke-width="2" stroke-linejoin="round"/>`;
   steps.forEach((s, k) => {
     const x = X(route.chain[s.i]), y = Y(route.p(s.i)[2]);
-    const col = s.kind === 'start' ? '#4fd18b' : s.kind === 'end' ? '#ff6b6b' : s.kind === 'turn' ? '#ffd27a' : '#9fb3c8';
+    const col = s.kind === 'start' ? '#4fd18b' : s.kind === 'end' ? '#ff6b6b' : s.kind === 'turn' || s.kind === 'via' ? '#ffd27a' : '#9fb3c8';
     html += `<circle cx="${x}" cy="${y}" r="${s.kind === 'passage' ? 1.8 : 2.6}" fill="${col}"/>`;
   });
   html += `<line id="pm-l" y1="${pad.t}" y2="${H - pad.b}" stroke="#7fe3ff" stroke-width="1.5"/><circle id="pm-c" r="4.5" fill="#7fe3ff" stroke="#fff" stroke-width="1.5"/>`;
@@ -3098,12 +3162,16 @@ $('r-prof').addEventListener('click', e => {
 // From underground; picking a From in another system moves To to one of its entrances.
 const ENTSET = new Set(ENTS);
 const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
-function choices(which) {
+// (which: 'from', 'to' or 'via', a stop, whose name is current; To can be back to the start, a round trip)
+function choices(which, current) {
   const from = placeBy(routeFrom);
   let list = PLACES.map(p => p.name);
-  if (which === 'to' && from) list = PLACES.filter(p => COMP[p.node] === COMP[from.node] && p.name !== routeFrom).map(p => p.name);
-  const here = [...HERE.keys()].filter(n => n === (which === 'to' ? routeTo : routeFrom));
-  return [['Where you are', here], ['Entrances', list.filter(n => ENTSET.has(n)).sort(byName)],
+  if (which !== 'from' && from) list = PLACES.filter(p => COMP[p.node] === COMP[from.node] && (which === 'via' || p.name !== routeFrom)).map(p => p.name);
+  const cur = which === 'to' ? routeTo : which === 'from' ? routeFrom : current;
+  const here = [...HERE.keys()].filter(n => n === cur);
+  return [[cur?.startsWith('Here (') ? 'Where you are' : 'On the survey', here],
+          ['Back to the start', which === 'to' && routeFrom ? [routeFrom] : []],
+          ['Entrances', list.filter(n => ENTSET.has(n)).sort(byName)],
           ['Places', list.filter(n => !ENTSET.has(n)).sort(byName)]];
 }
 function defaultTo(from) {
@@ -3112,11 +3180,12 @@ function defaultTo(from) {
   const same = PLACES.filter(p => COMP[p.node] === COMP[f.node] && p.name !== from);
   return (same.find(p => ENTSET.has(p.name)) || same[0] || { name: routeTo }).name;
 }
-function combo(which, onPick) {
-  const input = $(`r-${which}`), box = $(`r-${which}-opts`);
+// (o: committed(), the name chosen now; choices(), the groups to list; none(), what to say
+// when nothing matches; onPick(name); onClose(), if it's wanted)
+function combo(input, box, o) {
   document.body.appendChild(box);         // (out of the panel: see .opts)
   let shown = [], on = -1;
-  const committed = () => which === 'to' ? routeTo : routeFrom;
+  const committed = o.committed;
   function render() {
     const q = input.value.trim().toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
@@ -3124,13 +3193,13 @@ function combo(which, onPick) {
     // (the field shows the current choice: until it's edited, list everything)
     const all = input.dataset.typed !== '1';
     shown = []; let html = '';
-    for (const [title, names] of choices(which)) {
+    for (const [title, names] of o.choices()) {
       const hits = all ? names : names.filter(match);
       if (!hits.length) continue;
       html += `<div class="grp">${title}</div>`;
       for (const n of hits) html += `<div class="opt" role="option" data-k="${shown.push(n) - 1}">${escHtml(n)}</div>`;
     }
-    if (!shown.length) html = `<div class="none">${which === 'to' && routeFrom ? `Nothing joined to ${escHtml(routeFrom)} by that name` : 'No place by that name'}</div>`;
+    if (!shown.length) html = `<div class="none">${o.none()}</div>`;
     box.innerHTML = html;
     on = all ? shown.indexOf(committed()) : (shown.length ? 0 : -1);
     mark(true);
@@ -3146,12 +3215,14 @@ function combo(which, onPick) {
       top: down ? `${r.bottom + 4}px` : '', bottom: down ? '' : `${innerHeight - r.top + 4}px` });
   }
   function open() { input.dataset.typed = ''; render(); place(); box.hidden = false; input.setAttribute('aria-expanded', 'true'); }
-  function close() { box.hidden = true; input.setAttribute('aria-expanded', 'false'); input.value = committed() || ''; input.dataset.typed = ''; }
-  function pick(k) { const n = shown[k]; close(); if (n != null && n !== committed()) onPick(n); input.blur(); }
+  function close() { box.hidden = true; input.setAttribute('aria-expanded', 'false'); input.value = committed() || ''; input.dataset.typed = ''; o.onClose?.(); }
+  function pick(k) { const n = shown[k]; close(); if (n != null && n !== committed()) o.onPick(n); input.blur(); }
   input.addEventListener('focus', () => { open(); input.select(); });
   input.addEventListener('input', () => { input.dataset.typed = '1'; render(); place(); box.hidden = false; });
-  addEventListener('resize', () => { if (!box.hidden) place(); });
-  $('route').addEventListener('scroll', () => { if (!box.hidden) place(); });
+  // (a stop's field goes when the stops change: then so do these)
+  const moved = () => { if (!box.isConnected) { removeEventListener('resize', moved); $('route').removeEventListener('scroll', moved); } else if (!box.hidden) place(); };
+  addEventListener('resize', moved);
+  $('route').addEventListener('scroll', moved);
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -3177,11 +3248,11 @@ $('r-trip').onchange = e => { const t = TRIPS.find(t => t.name === e.target.valu
 // the ground is hidden while following a route (the slider brings it back),
 // and comes back as it was when the route is closed
 let groundBefore = null;
-function showRoute(from, to, step = 0, via = []) {
+function showRoute(from, to, step = 0, via = [], another = routeAnother) {
   if ($('route').hidden) { groundBefore = drawn.on ? drawn.was.ground : groundMat.uniforms.uOpacity.value; setGround(0); }
   if ($('route').hidden && innerWidth <= 640) $('route').classList.add('compact');
   $('route').hidden = false; document.body.classList.add('routing');
-  openRoute(from, to, step, true, via);
+  openRoute(from, to, step, true, via, another);
 }
 // opened afresh: the last route, else the first trip, else between the
 // entrances (or from the entrance to the first place, where there's one)
@@ -3241,9 +3312,63 @@ $('r-close').onclick = closeRoute;
   sheetTo = st => { if (state() === 'peek' || st === 'full' || st === 'peek') setSheet(st); };
   $('r-grab').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(state() === 'peek' ? 'half' : 'peek'); } });
 }
-combo('from', n => openRoute(n, defaultTo(n)));
-combo('to', n => openRoute(routeFrom, n));
-$('r-swap').onclick = () => openRoute(routeTo, routeFrom, 0, true, routeVia.slice().reverse());
+const comboFor = (which, onPick) => combo($(`r-${which}`), $(`r-${which}-opts`), {
+  committed: () => which === 'to' ? routeTo : routeFrom, choices: () => choices(which), onPick,
+  none: () => which === 'to' && routeFrom ? `Nothing joined to ${escHtml(routeFrom)} by that name` : 'No place by that name' });
+// a new From keeps the stops joined to it, and a round trip stays one
+comboFor('from', n => {
+  const f = placeBy(n), keep = routeVia.filter(v => { const p = placeBy(v); return p && f && COMP[p.node] === COMP[f.node]; });
+  openRoute(n, routeFrom === routeTo ? n : defaultTo(n), 0, true, keep);
+});
+comboFor('to', n => openRoute(routeFrom, n, 0, true, routeVia));
+
+// -- routes: the stops ---------------------------------------------------------------------
+// Stops between From and To, gone through in turn: each a field like From's,
+// with a button to take it earlier and one to remove it. + Add a stop adds an
+// empty one at the end, to choose; dragging the route on the 3D view adds one
+// at a station (see below). Round trip makes To the start (with the old To as
+// a stop), and a route that could retrace itself can come back another way.
+let addingVia = false, viaBoxes = [];
+const reopen = (via, another = routeAnother) => openRoute(routeFrom, routeTo, 0, true, via, another);
+function renderVias() {
+  viaBoxes.forEach(b => b.remove()); viaBoxes = [];
+  const wrap = $('r-vias');
+  wrap.innerHTML = '';
+  const rows = [...routeVia, ...(addingVia ? [''] : [])];
+  rows.forEach((name, k) => {
+    const row = document.createElement('div');
+    row.className = 'via';
+    row.innerHTML = `<span class="dot" style="background:#ffd27a"></span><span>${k ? '' : 'Via'}</span>` +
+      `<div class="combo"><input autocomplete="off" spellcheck="false" aria-label="Stop ${k + 1}" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Choose a stop&hellip;"><div class="opts" role="listbox" hidden></div></div>` +
+      `<button class="vb" data-a="up" title="Go here earlier" aria-label="Move this stop earlier"${k && name ? '' : ' disabled'}>&uarr;</button>` +
+      `<button class="vb" data-a="x" title="Remove this stop" aria-label="Remove this stop">&times;</button>`;
+    const input = row.querySelector('input'), box = row.querySelector('.opts');
+    input.value = name; input.title = name;
+    wrap.appendChild(row); viaBoxes.push(box);
+    combo(input, box, {
+      committed: () => name, choices: () => choices('via', name), none: () => 'No place by that name',
+      onPick: n => { const v = routeVia.slice(); if (name) v[k] = n; else v.push(n); addingVia = false; reopen(v); },
+      onClose: () => { if (!name && addingVia) { addingVia = false; setTimeout(renderVias, 150); } } });
+    row.querySelector('[data-a=up]').onclick = () => { const v = routeVia.slice(); [v[k - 1], v[k]] = [v[k], v[k - 1]]; reopen(v); };
+    row.querySelector('[data-a=x]').onclick = () => { if (!name) { addingVia = false; renderVias(); } else reopen(routeVia.filter((_, j) => j !== k)); };
+    if (!name) setTimeout(() => input.focus());
+  });
+  wrap.parentElement.classList.toggle('has-vias', rows.length > 0);
+  $('r-another-row').hidden = !(routeVia.length || routeFrom === routeTo);
+  $('r-another').checked = routeAnother;
+  $('r-round').hidden = routeFrom === routeTo;
+}
+$('r-addvia').onclick = () => { addingVia = true; renderVias(); };
+$('r-round').onclick = () => openRoute(routeFrom, routeFrom, 0, true, routeTo && routeTo !== routeFrom ? [...routeVia, routeTo] : routeVia);
+$('r-another').onchange = e => reopen(routeVia, e.target.checked);
+// a link to the route, to share or to put in a trip report: the route only, not the view
+$('r-link').onclick = async () => {
+  const url = location.href.split('#')[0] + '#' + routeQuery(), b = $('r-link');
+  try { await navigator.clipboard.writeText(url); } catch { prompt('A link to this route:', url); return; }
+  b.classList.add('done'); b.title = 'Link copied';
+  setTimeout(() => { b.classList.remove('done'); b.title = 'Copy a link to this route'; }, 1600);
+};
+$('r-swap').onclick = () => openRoute(routeTo, routeFrom, 0, true, routeVia.slice().reverse());   // (a round trip: the other way round)
 $('r-prev').onclick = () => goStep(cur - 1);
 $('r-next').onclick = () => goStep(cur + 1);
 $('r-all').onclick = () => showOverview();
@@ -3306,8 +3431,8 @@ $('exag').addEventListener('click', writeHash);
     // a route opens straight away (and stays in the address even if it can't
     // be found here, as with an old saved copy of the page about to update)
     if (h.get('from') && h.get('to')) {
-      routeHash = ['from', 'to', 'via', 'step'].filter(k => h.has(k)).map(k => `${k}=${encodeURIComponent(h.get(k))}`).join('&');
-      showRoute(h.get('from'), h.get('to'), +h.get('step') || 0, h.get('via') ? h.get('via').split('|') : []);
+      routeHash = ['from', 'to', 'via', 'another', 'step'].filter(k => h.has(k)).map(k => `${k}=${encodeURIComponent(h.get(k))}`).join('&');
+      showRoute(h.get('from'), h.get('to'), +h.get('step') || 0, h.get('via') ? h.get('via').split('|') : [], h.get('another') === '1');
       writeHash();
     }
     else writeHash();
@@ -3315,7 +3440,7 @@ $('exag').addEventListener('click', writeHash);
   }
 }
 function routeFrame(dt) {
-  if (route && performance.now() < dashUntil) routeDash.material.dashOffset -= dt * 18;
+  if (dashing()) routeDash.material.dashOffset -= dt * 18;
 }
 
 // -- moving through the cave -------------------------------------------------------------------
@@ -3509,6 +3634,91 @@ $('pick-go').onclick = () => {
   });
 }
 
+// -- routes: drag the route --------------------------------------------------------------------
+// Drag the route's line on the 3D view onto another passage and it goes that
+// way: a new stop at the station nearest where it's let go. Drag a stop's gold
+// dot, or either end's, to move it (a round trip's start and end move together).
+// The route is worked out again as it's dragged, each time it reaches another
+// station; let go somewhere it can't go and it goes back as it was.
+{
+  const v3 = new THREE.Vector3();
+  const scr = i => {
+    const r = canvas.getBoundingClientRect();
+    toWorldInto(gp(i), v3).project(camera);
+    return v3.z > 1 ? null : [(v3.x + 1) / 2 * r.width + r.left, (1 - v3.y) / 2 * r.height + r.top];
+  };
+  const segDist = (x, y, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)) : 0;
+    return Math.hypot(a[0] + t * dx - x, a[1] + t * dy - y);
+  };
+  function hit(x, y, touch) {
+    if (!route || picking || $('route').hidden || !FEATURES.routes) return null;
+    const near = touch ? 22 : 10;
+    // the dots first: the stops, then the ends
+    const last = route.nodes.length - 1;
+    const dots = [...legEnds.slice(0, -1).map((i, k) => ['via', k, route.nodes[i]]), ['from', 0, route.nodes[0]], ['to', 0, route.nodes[last]]];
+    for (const [what, k, n] of dots) { const p = scr(n); if (p && Math.hypot(p[0] - x, p[1] - y) < near + 4) return { what, k }; }
+    // then the line: a new stop, in the leg it's in
+    let best = -1, bd = near, prev = scr(route.nodes[0]);
+    for (let i = 1; i <= last; i++) {
+      const q = scr(route.nodes[i]);
+      if (prev && q) { const d = segDist(x, y, prev, q); if (d < bd) { bd = d; best = i; } }
+      prev = q;
+    }
+    if (best < 0) return null;
+    const k = legEnds.findIndex(e => e >= best);
+    return { what: 'insert', k: k < 0 ? routeVia.length : k };
+  }
+  let drag = null;
+  function apply(n) {
+    const [f0, t0, v0] = drag.orig, name = stopName(n);
+    let f = f0, t = t0;
+    const v = v0.slice();
+    if (drag.what === 'via') v[drag.k] = name;
+    else if (drag.what === 'insert') v.splice(drag.k, 0, name);
+    else if (drag.what === 'from') { f = name; if (f0 === t0) t = name; }
+    else { t = name; if (f0 === t0) f = name; }
+    openRoute(f, t, 0, false, v);
+  }
+  // (capturing: before the view's controls, which then don't turn the view)
+  canvas.addEventListener('pointerdown', e => {
+    if (drag || e.button !== 0 || !e.isPrimary) return;
+    const h = hit(e.clientX, e.clientY, e.pointerType !== 'mouse');
+    if (!h) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    drag = { ...h, id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, node: -1,
+      orig: [routeFrom, routeTo, routeVia.slice()], sys: COMP[route.nodes[0]] };
+    canvas.classList.add('dragging-route');
+    setSpin(false);
+  }, true);
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) {
+      if (e.pointerType === 'mouse' && !e.buttons) canvas.classList.toggle('on-route', !!hit(e.clientX, e.clientY, false));
+      return;
+    }
+    if (e.pointerId !== drag.id) return;
+    e.stopImmediatePropagation();
+    if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    drag.moved = true;
+    const n = stationAt(e.clientX, e.clientY, 60);
+    if (n < 0 || COMP[n] !== drag.sys || n === drag.node) return;
+    drag.node = n;
+    apply(n);
+  }, true);
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    e.stopImmediatePropagation();
+    canvas.classList.remove('dragging-route');
+    const d = drag;
+    drag = null;
+    if (!route && d.moved) openRoute(d.orig[0], d.orig[1], 0, false, d.orig[2]);
+  };
+  canvas.addEventListener('pointerup', end, true);
+  canvas.addEventListener('pointercancel', end, true);
+}
+
 // -- routes: the printed card ----------------------------------------------------------------
 // Printing the page (its print button, or the browser's) prints the route as
 // a card, black on white: the numbers, a plan of the way over the survey
@@ -3565,7 +3775,7 @@ function buildPrint() {
   steps.forEach((s, k) => {
     const p = route.passageAt(s.i);
     if (p && p !== here && s.kind !== 'end') { h += `<div class="sec">${escHtml(p)}</div>`; here = p; }
-    const head = s.kind === 'start' ? 'Start' : s.kind === 'end' ? 'Arrive' : s.num ? `Step ${s.num}` : 'Passage';
+    const head = s.kind === 'start' ? 'Start' : s.kind === 'end' ? 'Arrive' : s.kind === 'via' ? 'Stop' : s.num ? `Step ${s.num}` : 'Passage';
     const dia = s.kind === 'end' ? '' : `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${junctionSvg(s).replaceAll('#7fe3ff', '#1677b8').replaceAll('rgba(160,180,205,.35)', '#c4c4c4').replaceAll('rgba(255,210,122,.55)', '#d9a43a')}</svg>`;
     h += `<div class="st">${dia || '<div></div>'}<div><div class="h">${head} &middot; ${fmtM(route.chain[s.i])}${route.p ? ` &middot; ${Math.round(route.p(s.i)[2])} m` : ''}</div>` +
       `<div class="t">${escHtml(s.text)}</div>` +
@@ -3671,7 +3881,7 @@ function frame() {
   // keep going while anything is still moving: a flight, the damping after a
   // drag, the spin (or waiting to resume it), compass mode, the route's dashes
   const drawnMoving = drawnFrame(now);
-  if (fly || moved || keyed || spinning || compassOn || drawnMoving || (route && now < dashUntil)) invalidate();
+  if (fly || moved || keyed || spinning || compassOn || drawnMoving || dashing()) invalidate();
 }
 loopReady = true;
 invalidate();

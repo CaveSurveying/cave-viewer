@@ -89,12 +89,26 @@ named places (one entrance and no names, say) has no Routes button.
 - **Step by step**: each junction drawn from above the way you arrive at it,
   which way to go and which ways not to take, how far, and how much up or down.
   **Next** and **Back** (or the arrow keys) fly to each step.
+- **Stops on the way**: **+ Add a stop** to go through other places in turn,
+  each one taken earlier with its arrow or removed with its cross.
+- **Drag the route** on the 3D view onto another passage to send it that way:
+  a stop goes in at the survey station nearest where you let go. Drag a stop's
+  gold dot, or either end's, to move it.
+- **Round trip** brings the route back to where it started (the old To becomes
+  a stop), and **Come back another way** keeps the way back off the way there
+  where there's a sensible alternative.
 - **I'm somewhere else**: pick the passage you're in and it re-routes from
   there.
 - **Trips**: ready-made routes from the config (a round trip, say).
 - **Print** the route as a card to take with you.
+- **Copy a link** to the route, to share it or put it in a trip report.
 - The address keeps the route, the step and the view's settings (the plan,
-  X-ray, the vertical scale), so a link opens it as you left it.
+  X-ray, the vertical scale), so a link opens it as you left it. The route is
+  `#from=…&to=…`, with `&via=…|…` for its stops in turn and `&another=1` to come
+  back another way. A place is its name; a stop anywhere else is its passage
+  and survey station, `Gour Passage (stn 208@G4)`. If a later survey has lost
+  that station, the place or passage the name begins with stands in for it, so
+  an old link still opens.
 
 ![The route planner: from Redhouse Lane's entrance to Camp Aven, 2.35 km, with its height profile and directions](docs/images/redhouse-route.jpg)
 
