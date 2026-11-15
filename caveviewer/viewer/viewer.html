@@ -2888,6 +2888,7 @@ function openRoute(fromName, toName, step = 0, fly = true, via = [], another = r
     $('r-stats').innerHTML = `<span id="r-none">${a.node === b.node && !via.length ? 'Add a stop to go round, or pick another place.'
       : apart ? `${escHtml(fromName)} and ${escHtml(toName)}${via.length ? ' and the stops' : ''} aren't joined underground in the survey.`
       : 'No way through the survey between these.'}</span>`;
+    tellParent();
     return false;
   }
   route = new Route(path);
@@ -2929,6 +2930,7 @@ function openRoute(fromName, toName, step = 0, fly = true, via = [], another = r
   drawProfile();
   setSpin(false);
   if (step > 0) goStep(Math.min(step, steps.length - 1), fly); else showOverview(fly);
+  tellParent();
   return true;
 }
 
@@ -2945,6 +2947,48 @@ function closeRoute() {
     groundBefore = null;
   }
   routeHash = ''; writeHash();
+  tellParent();
+}
+
+// -- routes: in another page's frame ------------------------------------------------------------
+// A page can show the 3D view in a frame (an iframe) and use its routes: a trip
+// report, say, keeping the route someone took. The view tells the page about the
+// route every time it changes, and the page can send it one to show. Messages
+// (window.postMessage), each an object:
+//   from the view: { source: 'cave-viewer', type: 'ready', cave }, once it's loaded;
+//     { source: 'cave-viewer', type: 'route', cave, route }: route is null when
+//     there's none, else { link: '#from=…', from, to, via, another, length, up,
+//     down, low, high (metres), stops: [{ name, at }] (each stop and the end, at
+//     metres along the route), passages: [names in turn] }.
+//   to the view: { target: 'cave-viewer', type: 'route', link: '#from=…' } to show
+//     a route (an empty link closes it), or { target: 'cave-viewer', type: 'open' }
+//     to open the route panel.
+// Nothing in the messages is private (they're what the address says), so they go
+// to whatever page the view is in.
+const EMBEDDED = window.parent !== window;
+function routeSummary() {
+  if (!route) return null;
+  const st = route.stats();
+  return { link: '#' + routeQuery(), from: routeFrom, to: routeTo, via: routeVia.slice(), another: routeAnother,
+    length: Math.round(st.length), up: Math.round(st.up), down: Math.round(st.down), low: Math.round(st.low), high: Math.round(st.high),
+    stops: [...routeVia, routeTo].map((name, k) => ({ name, at: Math.round(route.chain[legEnds[k]] ?? st.length) })),
+    passages: route.passages().map(([, t]) => t) };
+}
+function tellParent(type = 'route') {
+  if (!EMBEDDED) return;
+  try { window.parent.postMessage({ source: 'cave-viewer', type, cave: document.title.replace(/ in 3D$/, ''), ...(type === 'route' ? { route: routeSummary() } : {}) }, '*'); } catch {}
+}
+if (EMBEDDED) {
+  addEventListener('message', e => {
+    const m = e.data;
+    if (!m || m.target !== 'cave-viewer') return;
+    if (m.type === 'open' && $('route').hidden) $('r-open').click();
+    if (m.type === 'route') {
+      if (!m.link) { if (!$('route').hidden) closeRoute(); return; }
+      const h = new URLSearchParams(String(m.link).replace(/^#/, ''));
+      if (h.get('from') && h.get('to')) showRoute(h.get('from'), h.get('to'), 0, h.get('via') ? h.get('via').split('|') : [], h.get('another') === '1');
+    }
+  });
 }
 
 // the view of one step: from behind and above, facing the way you arrive,
@@ -3877,7 +3921,7 @@ function frame() {
   renderMask();
   renderer.render(scene, camera);
   placeLabels();
-  if (first) { first = false; progress(1); $('loading').classList.add('done'); }
+  if (first) { first = false; progress(1); $('loading').classList.add('done'); tellParent('ready'); if (route) tellParent(); }
   // keep going while anything is still moving: a flight, the damping after a
   // drag, the spin (or waiting to resume it), compass mode, the route's dashes
   const drawnMoving = drawnFrame(now);

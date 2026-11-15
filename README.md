@@ -114,6 +114,34 @@ named places (one entrance and no names, say) has no Routes button.
 
 ![Searching To: typing "ri" lists the places joined to the From entrance](docs/images/route-search.jpg)
 
+### Routes in another page
+
+A page can show the 3D view in a frame and use its routes: a trip report that
+keeps the route a party took, say ([Subterra](https://subterra.world)'s trip
+log does). Frame the view's address, with a route after the `#` to open on it,
+and listen for its messages (`window.postMessage`):
+
+```js
+frame.src = 'https://cavesurveying.github.io/gb.mendips.burrington/goatchurch/3d/' + (trip.route?.link || '')
+addEventListener('message', e => {
+  if (e.source !== frame.contentWindow || e.data?.source !== 'cave-viewer') return
+  if (e.data.type === 'ready') { /* loaded */ }
+  if (e.data.type === 'route') saveRoute(e.data.route)   // null when the route's closed
+})
+```
+
+- **`ready`**, once the 3D model has loaded.
+- **`route`**, every time the route changes: `{ link, from, to, via, another,
+  length, up, down, low, high, stops, passages }`, in metres, where `link` is
+  the route's part of the address (`#from=…`), `stops` each stop and the end in
+  turn as `{ name, at }` (metres along), and `passages` the named passages it
+  goes through.
+
+The page can send the view `{ target: 'cave-viewer', type: 'open' }` to open
+the route panel, or `{ target: 'cave-viewer', type: 'route', link: '#from=…' }`
+to show a route (an empty link closes it). The messages say only what the
+address says, so the view sends them to whatever page frames it.
+
 ### On a phone, underground, and in AR
 
 <img src="docs/images/phone-route.jpg" alt="A route step on a phone: the junction diagram, the direction and the passage, with the cave around it" width="300" align="right">
