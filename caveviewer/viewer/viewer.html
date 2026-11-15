@@ -285,6 +285,15 @@
     #print .sec { width: 100%; font-weight: 700; font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; color: #8a6420; margin-top: 4pt; break-after: avoid; }
     #print .credits { margin-top: 8pt; font-size: 7.5pt; color: #555; border-top: .5pt solid #ccc; padding-top: 4pt; }
   }
+  /* in another page's frame: that page has the cave's name and its own links,
+     so the view keeps to the cave, its Routes and AR, and a way out to the full view */
+  #title a.full { display: none; }
+  body.embedded #title a.back, body.embedded #title h1, body.embedded #t-sub, body.embedded #chips { display: none; }
+  body.embedded #title { padding: 4px 12px 10px; }
+  body.embedded #title a.full { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px; color: var(--text); text-decoration: none; background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .14); }
+  body.embedded #title a.full:hover { background: rgba(255, 255, 255, .16); }
   body.still #panel, body.still #spin, body.still #compass, body.still #title a.back, body.still #title .ar, body.still #title .rbtn, body.still #title .chip.off, body.still #route, body.still #credits { display: none; }
 
   @media (max-width: 640px) {
@@ -351,6 +360,7 @@
   <button id="ar" class="chip ar" hidden title="Put the model on a table or the floor around you">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>
     <span id="ar-what">View in AR</span></button>
+  <a class="full" id="full" href="./" target="_blank" rel="noopener" title="Open this 3D view on its own, in a new tab">Open full 3D &#8599;</a>
 </div>
 
 <div id="legend" class="glass" aria-hidden="true">
@@ -458,6 +468,18 @@ const STILL = location.search.includes('still');   // the index page's preview
 let framePending = false, loopReady = false;
 function invalidate() { if (loopReady && !framePending) { framePending = true; requestAnimationFrame(frame); } }
 if (STILL) document.body.classList.add('still');
+// In another page's frame (a trip log, say): no title card or About (the page has
+// them), the View panel closed, no offline copy or install, and the full view a
+// tab away. (The index page's preview, ?still, is its own thing.)
+const EMBEDDED = window.parent !== window && !STILL;
+if (EMBEDDED) {
+  document.body.classList.add('embedded');
+  document.getElementById('panel').classList.add('closed');
+  document.getElementById('panel-h').setAttribute('aria-expanded', 'false');
+  document.querySelector('link[rel="manifest"]')?.remove();
+  // the full view opens where this one is: the route, the step and the settings
+  document.getElementById('full').addEventListener('click', e => { e.currentTarget.href = location.href; });
+}
 const $ = id => document.getElementById(id);
 const progress = (f, what) => { $('load-fill').style.width = `${Math.round(f * 100)}%`; if (what) $('load-what').textContent = what; };
 const fail = msg => { $('load-err').style.display = 'block'; $('load-err').textContent = msg; };
@@ -521,7 +543,7 @@ function setOffline(state) {
   }[state];
   el.textContent = text; el.title = title; el.dataset.state = state;
 }
-if (FEATURES.offline && 'serviceWorker' in navigator && isSecureContext && !STILL) {
+if (FEATURES.offline && 'serviceWorker' in navigator && isSecureContext && !STILL && !EMBEDDED) {
   setOffline('saving');
   const check = async () => setOffline(navigator.serviceWorker.controller && await caches.match('terrain.bin', { ignoreSearch: true }) ? 'ready' : 'saving');
   navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(check).catch(() => setOffline('none'));
@@ -2965,7 +2987,6 @@ function closeRoute() {
 //     to open the route panel.
 // Nothing in the messages is private (they're what the address says), so they go
 // to whatever page the view is in.
-const EMBEDDED = window.parent !== window;
 function routeSummary() {
   if (!route) return null;
   const st = route.stats();
