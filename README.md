@@ -142,6 +142,14 @@ the route panel, or `{ target: 'cave-viewer', type: 'route', link: '#from=…' }
 to show a route (an empty link closes it). The messages say only what the
 address says, so the view sends them to whatever page frames it.
 
+In a frame, the view keeps to the cave: the page around it has the cave's
+name and its own links, so the title card shows only the cave's notice, the
+Routes and AR buttons, and **Open full 3D ↗**, which opens the view on its own
+in a new tab, where it was (the route, the step, the settings). The View panel
+starts closed, and the view doesn't save itself for offline use or offer to
+install. Frame it full screen, or near it: it's a 3D view to move about in,
+and in a small box on a page that scrolls, the scroll wheel zooms it.
+
 ### On a phone, underground, and in AR
 
 <img src="docs/images/phone-route.jpg" alt="A route step on a phone: the junction diagram, the direction and the passage, with the cave around it" width="300" align="right">
