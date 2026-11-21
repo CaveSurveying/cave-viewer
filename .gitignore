@@ -6,3 +6,5 @@ __pycache__/
 # the test fixture's build
 /tests/fixture/build/
 /tests/fixture/site/
+# Therion run in the repo root (by a test)
+therion.log
