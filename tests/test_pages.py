@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 from caveviewer.files import survey_list
+from caveviewer.links import page_html
 from caveviewer.pages import children, inside
 
 LIST = '''<table><tr><th>Title</th></tr>
@@ -34,6 +35,15 @@ class Pages(unittest.TestCase):
         self.assertEqual((top['title'], top['length'], top['stations']), ('Area', 100, 41))
         self.assertEqual([(k['id'], k['title'], k['length']) for k in kids], [('Big', 'Big', 90), ('Small', 'Small Hole', 10)])
 
+
+    def test_access_box(self):
+        self.assertEqual(page_html({}), '')
+        acc = {'url': 'https://a.example/x?y=1&z=2', 'label': "the guide's page"}
+        reg = {'url': 'https://r.example/1', 'label': 'the Registry'}
+        both = page_html({'access': acc, 'registry': reg})
+        self.assertIn('Before a trip, see <a href="https://a.example/x?y=1&amp;z=2">the guide&#x27;s page</a>.', both)
+        self.assertIn('The cave&rsquo;s entry in <a href="https://r.example/1">the Registry</a>', both)
+        self.assertNotIn('Access.', page_html({'registry': reg}))
 
 if __name__ == '__main__':
     unittest.main()

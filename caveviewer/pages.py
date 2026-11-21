@@ -11,6 +11,7 @@ import json
 import os
 import time
 
+from caveviewer.links import page_html as access_box
 from caveviewer.terrain import CREDITS
 
 E = html.escape
@@ -147,6 +148,7 @@ def page(cfg, cave, caves, out):
   h1 {{ margin: 0 0 4px; font-size: 32px; letter-spacing: -.02em; }}
   .lede {{ margin: 0 0 24px; color: var(--muted); max-width: 720px; }}
   .notice {{ margin: -8px 0 24px; padding: 10px 14px; max-width: 720px; border-left: 3px solid #e0a83a; background: rgba(224, 168, 58, .1); border-radius: 4px; }}
+  .access {{ margin: -8px 0 24px; padding: 10px 14px; max-width: 720px; border-left: 3px solid #7fb8cc; background: rgba(127, 184, 204, .1); border-radius: 4px; }}
   .about {{ max-width: 720px; }}
   .about p, .about li {{ line-height: 1.55; }}
   .about blockquote {{ margin: 0 0 0 4px; padding-left: 14px; border-left: 2px solid var(--line); color: var(--muted); }}
@@ -187,6 +189,7 @@ def page(cfg, cave, caves, out):
 <h1>{E(cave['name'])}</h1>
 <p class="lede">{E(cave['area'])}{' &middot; ' + cave['lede'] if cave.get('lede') else ''}</p>
 {f'<p class="notice">{cave["notice"]}</p>' if cave.get('notice') else ''}
+{access_box(cave)}
 <div class="stats">{stats}</div>
 {chr(10).join(parts)}
 <footer>Survey: {cave['credit']}{source} &middot; {CREDITS.get(cave['terrain']['type'], '')} Imagery: Esri &middot; Built by <a href="https://github.com/CaveSurveying/cave-viewer">cave-viewer</a> from the survey data; every push rebuilds it.</footer>

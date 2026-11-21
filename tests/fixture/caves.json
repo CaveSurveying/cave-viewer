@@ -19,7 +19,9 @@
     "trips": [{"name": "Round the loop", "via": ["Tiny Entrance", "The Loop", "Tiny Entrance"]}]
   },
   "caves": [
-    {"id": "tiny", "name": "Tiny Cave"},
+    {"id": "tiny", "name": "Tiny Cave", "page": "tiny-page",
+     "access": {"url": "https://example.org/access/tiny", "label": "the Test Access Guide's page for Tiny Cave"},
+     "registry": {"url": "https://example.org/registry?id=1", "label": "the Test Cave Registry"}},
     {"id": "tiny-plain", "name": "Tiny Cave, plain", "short_name": "Tiny plain", "path": "plain",
      "features": {"routes": false, "ar": false, "offline": false}}
   ]

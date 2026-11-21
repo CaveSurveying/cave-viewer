@@ -47,6 +47,11 @@
     border-left: 3px solid #e0a83a; background: rgba(224, 168, 58, .14); border-radius: 4px; }
   #title #t-notice:empty { display: none; }
   #title #t-notice a { color: inherit; }
+  /* the config's access and registry links: who looks after the cave (cave-viewer gives no access arrangements of its own) */
+  #title #t-links { margin: -4px 0 10px; font-size: 12px; }
+  #title #t-links:empty { display: none; }
+  #title #t-links a { color: var(--accent); text-decoration: none; }
+  #title #t-links a:hover { text-decoration: underline; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, .06);
     border: 1px solid rgba(255, 255, 255, .08); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -311,6 +316,7 @@
     body.routing #panel, body.routing #spin, body.routing #credits { display: none; }
     body.routing #compass { top: calc(max(16px, env(safe-area-inset-top)) + 84px); right: 16px; bottom: auto; }
     body.routing #title p, body.routing #title .chips { display: none; }
+    body.routing #title #t-links:not(:empty) { display: block; }   /* (who to ask about access, still there while planning a route) */
     /* the sheet scrolls as one, with its buttons kept at the bottom */
     #route { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0; }
     #r-steps { flex: none; min-height: 0; max-height: none; overflow: visible; }
@@ -353,6 +359,7 @@
   <h1><span id="t-name">{{NAME}}</span></h1>
   <p id="t-sub">{{AREA}} &middot; cave survey in 3D</p>
   <p id="t-notice">{{NOTICE}}</p>
+  <p id="t-links">{{LINKS}}</p>
   <div class="chips" id="chips"></div>
   <button id="r-open" class="chip rbtn" title="Find the way between two places in the cave">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>

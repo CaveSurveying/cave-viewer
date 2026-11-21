@@ -73,8 +73,18 @@ class Build(unittest.TestCase):
         self.assertIn("'tiny-tiles'", sw)                         # (its own caches)
         for k in ('__VERSION__', '__FILES__', '__ID__'):
             self.assertNotIn(k, sw)
+        self.assertIn('Before a trip: <a href="https://example.org/access/tiny" target="_blank" rel="noopener">access ↗</a>', page)
+        self.assertIn('<a href="https://example.org/registry?id=1" target="_blank" rel="noopener">registry entry ↗</a>', page)
+        plain = open(os.path.join(self.out, 'plain', 'index.html'), encoding='utf-8').read()
+        self.assertIn('<p id="t-links"></p>', plain)              # (none for a cave without them)
         man = json.load(open(os.path.join(self.out, 'plain', 'manifest.webmanifest')))
         self.assertEqual(man['short_name'], 'Tiny plain')
+
+    def test_cave_page(self):
+        page = open(os.path.join(self.out, 'tiny-page', 'index.html'), encoding='utf-8').read()
+        self.assertIn('<p class="access"><b>Access.</b>', page)
+        self.assertIn('see <a href="https://example.org/access/tiny">the Test Access Guide&#x27;s page for Tiny Cave</a>.', page)
+        self.assertIn('<a href="https://example.org/registry?id=1">the Test Cave Registry</a>', page)
 
     def test_features_off(self):
         s = self.scene('plain')
@@ -84,7 +94,7 @@ class Build(unittest.TestCase):
     def test_landing(self):
         page = open(os.path.join(self.out, 'index.html'), encoding='utf-8').read()
         self.assertIn('<title>Test caves in 3D</title>', page)
-        self.assertIn('href="tiny/"', page)
+        self.assertIn('href="tiny-page/"', page)               # (its landing page, which it has)
         self.assertIn('href="plain/"', page)
         self.assertIn('Tiny Cave: made up for the tests', page)
 
