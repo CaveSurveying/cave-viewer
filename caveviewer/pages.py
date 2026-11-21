@@ -11,7 +11,7 @@ import json
 import os
 import time
 
-from caveviewer import links
+from caveviewer.links import page_html as access_box
 from caveviewer.terrain import CREDITS
 
 E = html.escape
@@ -189,7 +189,7 @@ def page(cfg, cave, caves, out):
 <h1>{E(cave['name'])}</h1>
 <p class="lede">{E(cave['area'])}{' &middot; ' + cave['lede'] if cave.get('lede') else ''}</p>
 {f'<p class="notice">{cave["notice"]}</p>' if cave.get('notice') else ''}
-{links.page_html(cave)}
+{access_box(cave)}
 <div class="stats">{stats}</div>
 {chr(10).join(parts)}
 <footer>Survey: {cave['credit']}{source} &middot; {CREDITS.get(cave['terrain']['type'], '')} Imagery: Esri &middot; Built by <a href="https://github.com/CaveSurveying/cave-viewer">cave-viewer</a> from the survey data; every push rebuilds it.</footer>
