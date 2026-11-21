@@ -73,6 +73,10 @@ class Build(unittest.TestCase):
         self.assertIn("'tiny-tiles'", sw)                         # (its own caches)
         for k in ('__VERSION__', '__FILES__', '__ID__'):
             self.assertNotIn(k, sw)
+        self.assertIn('Before a trip: <a href="https://example.org/access/tiny" target="_blank" rel="noopener">access ↗</a>', page)
+        self.assertIn('<a href="https://example.org/registry?id=1" target="_blank" rel="noopener">registry entry ↗</a>', page)
+        plain = open(os.path.join(self.out, 'plain', 'index.html'), encoding='utf-8').read()
+        self.assertIn('<p id="t-links"></p>', plain)              # (none for a cave without them)
         man = json.load(open(os.path.join(self.out, 'plain', 'manifest.webmanifest')))
         self.assertEqual(man['short_name'], 'Tiny plain')
 

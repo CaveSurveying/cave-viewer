@@ -143,7 +143,7 @@ to show a route (an empty link closes it). The messages say only what the
 address says, so the view sends them to whatever page frames it.
 
 In a frame, the view keeps to the cave: the page around it has the cave's
-name and its own links, so the title card shows only the cave's notice, the
+name and its own links, so the title card shows only the cave's notice and its access and registry links, the
 Routes and AR buttons, and **Open full 3D ↗**, which opens the view on its own
 in a new tab, where it was (the route, the step, the settings). The View panel
 starts closed, and the view doesn't save itself for offline use or offer to
@@ -342,6 +342,22 @@ folder.
    entrance series is surveyed: the rest of the cave isn't shown."`), and
    `"about"`, a Markdown file of notes for its landing page (where the data
    comes from, what's missing, where to find a fuller survey).
+
+   And who looks after it: `"access"`, the page that keeps its access
+   arrangements (who to ask, keys, permits, closures), and `"registry"`, its
+   entry in the cave registry, each `{"url": …, "label": …}`. Its landing page
+   and its 3D view link to both. cave-viewer gives no access arrangements of
+   its own: they change, and the access bodies keep them up to date. A survey
+   that shows where a cave is should say where to find how to get in, so
+   give every cave its `"access"` (in `"defaults"`, an area's caves can share
+   one). For example, on Mendip:
+
+   ```json
+   "access": {"url": "https://access-guide.cscc.org.uk/sites/view/148",
+              "label": "the CSCC Access Guide's page for Swildon's Hole"},
+   "registry": {"url": "https://www.mcra.org.uk/registry/sitedetails.php?id=240",
+                "label": "the Mendip Cave Registry and Archive"}
+   ```
 
 3. Install and build:
 

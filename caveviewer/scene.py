@@ -16,6 +16,7 @@ import os
 import re
 import sys
 
+from caveviewer import links
 from caveviewer.formats import read_3d, read_lox_walls
 from caveviewer.geo import TO_LL, fit_affine, grid_ref, mercator
 from caveviewer.offline import offline
@@ -619,7 +620,7 @@ def page(cfg, cave, out_dir):
     words = {'NAME': html.escape(cave['name']), 'AREA': html.escape(cave['area']), 'ID': cave['id'],
              'CREDIT': cave['credit'], 'DATA': url, 'DATA_HTML': data_html, 'GROUND_CREDIT': ground_credit,
              'DRAWN_CREDIT': dr.get('page_credit', DRAWN_CREDITS[dr['type']]),
-             'NOTICE': cave.get('notice', '')}
+             'NOTICE': cave.get('notice', ''), 'LINKS': links.viewer_html(cave)}
     text = open(os.path.join(VIEWER, 'viewer.html'), encoding='utf-8').read()
     for k, v in words.items():
         text = text.replace('{{' + k + '}}', v)
